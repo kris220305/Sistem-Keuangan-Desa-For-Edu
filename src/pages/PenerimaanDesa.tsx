@@ -36,6 +36,7 @@ function SilpaTab() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [detailTab, setDetailTab] = useState<"data" | "rincian">("data");
+  const [mobilePane, setMobilePane] = useState<"list" | "detail">("list");
 
   const rekeningAset = getRekeningDetail("aset");
 
@@ -47,6 +48,9 @@ function SilpaTab() {
 
   useEffect(() => { setItems(loadState().silpa || []); }, []);
   useEffect(() => { if (mode !== "view") setDetailTab("data"); }, [mode]);
+  useEffect(() => {
+    if (mode !== "view" || selectedId) setMobilePane("detail");
+  }, [mode, selectedId]);
 
   const save = (newItems: SilpaItem[]) => {
     setItems(newItems);
@@ -93,7 +97,7 @@ function SilpaTab() {
     if (!confirm("Yakin hapus data ini?")) return;
     save(items.filter(i => i.id !== selectedItem.id)); setSelectedId(null); toast.success("Data dihapus");
   };
-  const handleBatal = () => { clearDraft(); setMode("view"); setForm(emptyForm); setDetailTab("data"); };
+  const handleBatal = () => { clearDraft(); setMode("view"); setForm(emptyForm); setDetailTab("data"); setMobilePane("list"); };
   const handleSimpan = () => {
     if (!form.tanggal) return toast.error("Isi tanggal");
     if (!form.nomorBukti) return toast.error("Isi nomor bukti / ref");
@@ -149,8 +153,34 @@ function SilpaTab() {
         <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">REALISASI SILPA TAHUN SEBELUMNYA</div>
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-rows-[minmax(0,200px)_minmax(0,1fr)] sm:grid-rows-[minmax(0,240px)_minmax(0,1fr)] lg:grid-rows-[minmax(0,320px)_minmax(0,1fr)] gap-3 p-3">
-      <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+      <div className="px-3 pt-3 lg:hidden">
+        <div className="inline-flex border border-[#c8c8c8] bg-white/70">
+          <button
+            type="button"
+            onClick={() => setMobilePane("list")}
+            className={cx(
+              "px-3 h-9 text-[13px] border-r border-[#c8c8c8] flex items-center gap-2",
+              mobilePane === "list" ? "bg-[#0b74d1] text-white" : "bg-transparent text-[#1f2937]",
+            )}
+          >
+            <List className="h-4 w-4" />
+            Daftar
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePane("detail")}
+            className={cx(
+              "px-3 h-9 text-[13px] flex items-center gap-2",
+              mobilePane === "detail" ? "bg-[#0b74d1] text-white" : "bg-transparent text-[#1f2937]",
+            )}
+          >
+            Detail
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 grid gap-3 p-3 lg:grid-cols-2">
+      <div className={cx("min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col", mobilePane === "list" ? "flex" : "hidden", "lg:flex")}>
         <div className="px-3 py-2 flex items-center justify-between bg-[#f4f4f4] border-b border-[#d0d0d0] text-[#111827]">
           <div className="text-[12px] font-semibold">Daftar SiLPA</div>
           <div className="text-[11px] text-muted-foreground">{items.length} data</div>
@@ -195,7 +225,7 @@ function SilpaTab() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+      <div className={cx("flex-1 min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col", mobilePane === "detail" ? "flex" : "hidden", "lg:flex")}>
         <div className="px-3 py-2 flex items-center justify-between border-b border-[#d0d0d0] bg-[#f4f4f4]">
           <div className="text-[12px] font-semibold text-[#111827]">Detail</div>
           <div className="flex items-center gap-2">
@@ -331,7 +361,7 @@ function SilpaTab() {
           )}
         </div>
 
-        <div className="border-t border-[#8e8e8e] bg-[#f4f4f4] px-4 py-3 flex items-center gap-2">
+        <div className="border-t border-[#8e8e8e] bg-[#f4f4f4] px-4 py-3 flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleTambah} disabled={mode !== "view"}>
             <Plus className="h-4 w-4 mr-2" /> Tambah
           </Button>
@@ -365,6 +395,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [detailTab, setDetailTab] = useState<"tbp" | "penyetor" | "bank" | "rincian">("tbp");
+  const [mobilePane, setMobilePane] = useState<"list" | "detail">("list");
 
   const rekeningPendapatan = getRekeningDetail("pendapatan");
 
@@ -382,6 +413,10 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
     if (mode === "view") return;
     setDetailTab("tbp");
   }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "view" || selectedId) setMobilePane("detail");
+  }, [mode, selectedId]);
 
   const items = allItems.filter(i => i.jenis === jenis);
 
@@ -464,7 +499,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
     if (!confirm("Yakin hapus data ini?")) return;
     save(allItems.filter(i => i.id !== selectedItem.id)); setSelectedId(null); toast.success("Data dihapus");
   };
-  const handleBatal = () => { clearDraft(); setMode("view"); setForm(emptyForm); setDetailTab("tbp"); };
+  const handleBatal = () => { clearDraft(); setMode("view"); setForm(emptyForm); setDetailTab("tbp"); setMobilePane("list"); };
 
   const handleSimpan = (opts?: { catatMutasiTunai?: boolean }) => {
     if (!form.tanggal) return toast.error("Isi tanggal");
@@ -627,8 +662,34 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
         <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">{title}</div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-hidden p-3 grid grid-rows-[minmax(0,200px)_minmax(0,1fr)_auto] sm:grid-rows-[minmax(0,240px)_minmax(0,1fr)_auto] lg:grid-rows-[minmax(0,320px)_minmax(0,1fr)_auto] gap-3">
-        <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+      <div className="px-3 pt-3 lg:hidden">
+        <div className="inline-flex border border-[#c8c8c8] bg-white/70">
+          <button
+            type="button"
+            onClick={() => setMobilePane("list")}
+            className={cx(
+              "px-3 h-9 text-[13px] border-r border-[#c8c8c8] flex items-center gap-2",
+              mobilePane === "list" ? "bg-[#0b74d1] text-white" : "bg-transparent text-[#1f2937]",
+            )}
+          >
+            <List className="h-4 w-4" />
+            Daftar
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePane("detail")}
+            className={cx(
+              "px-3 h-9 text-[13px] flex items-center gap-2",
+              mobilePane === "detail" ? "bg-[#0b74d1] text-white" : "bg-transparent text-[#1f2937]",
+            )}
+          >
+            Detail
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-hidden p-3 grid gap-3 lg:grid-cols-2">
+        <div className={cx("min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col", mobilePane === "list" ? "flex" : "hidden", "lg:flex")}>
           <div className="flex-1 min-h-0 overflow-auto">
             <RawTable className="min-w-[860px]">
               <TableHeader>
@@ -670,7 +731,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           </div>
         </div>
 
-        <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+        <div className={cx("min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col", mobilePane === "detail" ? "flex" : "hidden", "lg:flex")}>
           <div className="px-3 py-2 flex items-center justify-between border-b border-[#d0d0d0] bg-[#f4f4f4]">
             <div className="text-[11px] text-muted-foreground">{mode !== "view" ? "Auto-save aktif" : "Pilih data atau klik Tambah untuk mulai input"}</div>
             <div className="w-48 hidden md:block"><Progress value={progressValue} className="h-2 bg-[#e5e5e5]" /></div>
@@ -1025,42 +1086,42 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
             </div>
           )}
         </div>
+      </div>
 
-        <div className="border-t border-[#8e8e8e] bg-[#f4f4f4] px-3 py-2 flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" disabled>
-            <Printer className="h-4 w-4 mr-2" /> Cetak
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleTambah} disabled={mode !== "view"}>
-            <Plus className="h-4 w-4 mr-2" /> Tambah
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleUbah} disabled={mode !== "view"}>
-            <Pencil className="h-4 w-4 mr-2" /> Ubah
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none text-destructive" onClick={handleHapus} disabled={mode !== "view"}>
-            <Trash2 className="h-4 w-4 mr-2" /> Hapus
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleBatal} disabled={mode === "view"}>
-            <X className="h-4 w-4 mr-2" /> Batal
-          </Button>
-          {jenis === "tunai" ? (
-            <>
-              <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: true })} disabled={mode === "view"}>
-                <Save className="h-4 w-4 mr-2" /> Simpan + Mutasi
-              </Button>
-              <Button size="sm" variant="secondary" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
-                <Save className="h-4 w-4 mr-2" /> Simpan
-              </Button>
-            </>
-          ) : (
-            <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
+      <div className="border-t border-[#8e8e8e] bg-[#f4f4f4] px-3 py-2 flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" disabled>
+          <Printer className="h-4 w-4 mr-2" /> Cetak
+        </Button>
+        <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleTambah} disabled={mode !== "view"}>
+          <Plus className="h-4 w-4 mr-2" /> Tambah
+        </Button>
+        <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleUbah} disabled={mode !== "view"}>
+          <Pencil className="h-4 w-4 mr-2" /> Ubah
+        </Button>
+        <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none text-destructive" onClick={handleHapus} disabled={mode !== "view"}>
+          <Trash2 className="h-4 w-4 mr-2" /> Hapus
+        </Button>
+        <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleBatal} disabled={mode === "view"}>
+          <X className="h-4 w-4 mr-2" /> Batal
+        </Button>
+        {jenis === "tunai" ? (
+          <>
+            <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: true })} disabled={mode === "view"}>
+              <Save className="h-4 w-4 mr-2" /> Simpan + Mutasi
+            </Button>
+            <Button size="sm" variant="secondary" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
               <Save className="h-4 w-4 mr-2" /> Simpan
             </Button>
-          )}
-          <div className="flex-1" />
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={() => window.history.back()}>
-            <DoorOpen className="h-4 w-4 mr-2" /> Tutup
+          </>
+        ) : (
+          <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
+            <Save className="h-4 w-4 mr-2" /> Simpan
           </Button>
-        </div>
+        )}
+        <div className="flex-1" />
+        <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={() => window.history.back()}>
+          <DoorOpen className="h-4 w-4 mr-2" /> Tutup
+        </Button>
       </div>
     </div>
   );
