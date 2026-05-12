@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { Fragment, useState, useEffect, useMemo } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { getSessionId, trackFormProgress } from "@/lib/session-manager";
 import { getRekeningDetail } from "@/data/rekening-data";
@@ -16,7 +16,7 @@ import { appendMutasiKasAudit } from "@/data/mutasi-kas-audit";
 import { applyAutoMutasiForPenerimaanTunai } from "@/lib/penerimaan-tunai-mutasi";
 import { Combobox } from "@/components/ui/combobox";
 import { terbilangRupiah } from "@/lib/terbilang-id";
-import { Banknote, Landmark, Layers, Printer, Plus, Pencil, Trash2, X, Save, DoorOpen, List } from "lucide-react";
+import { Banknote, Landmark, Layers, Printer, Plus, Pencil, Trash2, X, Save, DoorOpen, List, ChevronDown, ChevronRight } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
@@ -27,6 +27,7 @@ type ActiveTab = "silpa" | "tunai" | "bank";
 function SilpaTab() {
   const [items, setItems] = useState<SilpaItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [detailTab, setDetailTab] = useState<"data" | "rincian">("data");
 
@@ -89,6 +90,13 @@ function SilpaTab() {
   const handleBatal = () => { clearDraft(); setMode("view"); setForm(emptyForm); setDetailTab("data"); };
   const handleSimpan = () => {
     if (!form.tanggal) return toast.error("Isi tanggal");
+    if (!form.nomorBukti) return toast.error("Isi nomor bukti / ref");
+    if (!form.uraian) return toast.error("Isi uraian");
+    if (!form.rincian || form.rincian.length === 0) return toast.error("Isi minimal 1 rincian");
+    const totDeb = form.rincian.reduce((s, r) => s + (Number(r.debet) || 0), 0);
+    const totKre = form.rincian.reduce((s, r) => s + (Number(r.kredit) || 0), 0);
+    if (totDeb <= 0 && totKre <= 0) return toast.error("Total rincian harus lebih dari 0");
+    if (totDeb !== totKre) return toast.error("Total debet dan kredit harus sama");
     if (mode === "ubah" && selectedId) {
       save(items.map(i => i.id === selectedId ? { ...i, ...form } : i));
       toast.success("Data diperbarui");
@@ -115,6 +123,9 @@ function SilpaTab() {
 
   const addRincian = () => {
     if (!rincianForm.kodeRekening) return toast.error("Pilih rekening rincian");
+    const debet = Number(rincianForm.debet) || 0;
+    const kredit = Number(rincianForm.kredit) || 0;
+    if ((debet <= 0 && kredit <= 0) || (debet > 0 && kredit > 0)) return toast.error("Isi Debet atau Kredit (salah satu) dan lebih dari 0");
     const newR: SilpaRincian = { id: crypto.randomUUID(), ...rincianForm };
     setForm({ ...form, rincian: [...form.rincian, newR] });
     setRincianForm({ kodeRekening: "", namaRekening: "", debet: 0, kredit: 0 });
@@ -127,17 +138,18 @@ function SilpaTab() {
   const progressValue = detailTab === "data" ? 50 : 100;
 
   return (
-    <div className="h-full flex flex-col gap-4">
-      <div className="rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm overflow-hidden">
+    <div className="h-full min-h-0 grid grid-rows-[minmax(0,320px)_minmax(0,1fr)] gap-4">
+      <div className="min-h-0 rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm overflow-hidden flex flex-col">
         <div className="px-4 py-3 flex items-center justify-between bg-gradient-to-r from-[#166534] via-[#22c55e] to-[#bbf7d0] text-white">
           <div className="text-[12px] font-extrabold tracking-wide uppercase">Realisasi SiLPA Tahun Sebelumnya</div>
           <div className="text-[11px] opacity-90">{items.length} data</div>
         </div>
 
-        <div className="overflow-auto">
+        <div className="flex-1 min-h-0 overflow-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-[#ecfdf5]">
+                <TableHead className="text-xs font-semibold w-10"></TableHead>
                 <TableHead className="text-xs font-semibold w-8">#</TableHead>
                 <TableHead className="text-xs font-semibold">Tanggal</TableHead>
                 <TableHead className="text-xs font-semibold">Nomor Bukti / Ref</TableHead>
@@ -147,30 +159,106 @@ function SilpaTab() {
             </TableHeader>
             <TableBody>
               {items.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-sm">Belum ada data SiLPA</TableCell></TableRow>
-              ) : items.map((item, idx) => (
-                <TableRow
-                  key={item.id}
-                  className={`cursor-pointer transition-colors ${selectedId === item.id ? "bg-[#d1fae5]" : "hover:bg-[#f0fdf4]"}`}
-                  onClick={() => { if (mode === "view") setSelectedId(item.id); }}
-                >
-                  <TableCell className="text-xs">{idx + 1}</TableCell>
-                  <TableCell className="text-xs">{item.tanggal}</TableCell>
-                  <TableCell className="text-xs font-mono">{item.nomorBukti}</TableCell>
-                  <TableCell className="text-xs">{item.uraian}</TableCell>
-                  <TableCell className="text-xs text-center">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.isProses ? "bg-[#dcfce7] text-[#166534]" : "bg-[#fef9c3] text-[#854d0e]"}`}>
-                      {item.isProses ? "Proses" : "Belum"}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8 text-sm">Belum ada data SiLPA</TableCell></TableRow>
+              ) : items.map((item, idx) => {
+                const active = selectedId === item.id;
+                const expanded = expandedId === item.id;
+                const rinc = item.rincian || [];
+                const totDeb = rinc.reduce((s, r) => s + (r.debet || 0), 0);
+                const totKre = rinc.reduce((s, r) => s + (r.kredit || 0), 0);
+                return (
+                  <Fragment key={item.id}>
+                    <TableRow
+                      className={`cursor-pointer transition-colors ${active ? "bg-[#d1fae5]" : (idx % 2 ? "bg-white/60" : "bg-transparent")} hover:bg-[#f0fdf4]`}
+                      onClick={() => { if (mode === "view") setSelectedId(item.id); }}
+                    >
+                      <TableCell className="text-xs">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          aria-label={expanded ? "Sembunyikan detail" : "Lihat detail"}
+                          aria-expanded={expanded}
+                          aria-controls={`silpa-detail-${item.id}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (mode !== "view") return;
+                            setSelectedId(item.id);
+                            setExpandedId((prev) => (prev === item.id ? null : item.id));
+                          }}
+                        >
+                          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-xs">{idx + 1}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{item.tanggal}</TableCell>
+                      <TableCell className="text-xs font-mono whitespace-nowrap">{item.nomorBukti}</TableCell>
+                      <TableCell className="text-xs max-w-[560px]">
+                        <div className="truncate" title={item.uraian}>{item.uraian}</div>
+                      </TableCell>
+                      <TableCell className="text-xs text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.isProses ? "bg-[#dcfce7] text-[#166534]" : "bg-[#fef9c3] text-[#854d0e]"}`}>
+                          {item.isProses ? "Proses" : "Belum"}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                    {expanded && (
+                      <TableRow className="bg-white/70">
+                        <TableCell colSpan={6} className="p-0">
+                          <div id={`silpa-detail-${item.id}`} className="px-4 py-3 border-t border-[#d1fae5]">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[12px]">
+                              <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
+                                <div className="text-[11px] text-muted-foreground">Rincian</div>
+                                <div className="font-semibold text-[#14532d]">{rinc.length} baris</div>
+                              </div>
+                              <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
+                                <div className="text-[11px] text-muted-foreground">Total Debet</div>
+                                <div className="font-semibold text-[#14532d] tabular-nums">{totDeb.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</div>
+                              </div>
+                              <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
+                                <div className="text-[11px] text-muted-foreground">Total Kredit</div>
+                                <div className="font-semibold text-[#14532d] tabular-nums">{totKre.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</div>
+                              </div>
+                            </div>
+                            {rinc.length > 0 && (
+                              <div className="mt-3 rounded-xl border border-[#eef2ff] bg-[#fbfcff] overflow-hidden max-h-52 overflow-auto">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="bg-[#ecfdf5] sticky top-0 z-10">
+                                      <TableHead className="text-[11px] font-semibold">Kd Rincian</TableHead>
+                                      <TableHead className="text-[11px] font-semibold">Nama Rincian</TableHead>
+                                      <TableHead className="text-[11px] font-semibold text-right">Debet</TableHead>
+                                      <TableHead className="text-[11px] font-semibold text-right">Kredit</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {rinc.map((r) => (
+                                      <TableRow key={r.id} className="hover:bg-[#f0fdf4]">
+                                        <TableCell className="text-xs font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
+                                        <TableCell className="text-xs">{r.namaRekening}</TableCell>
+                                        <TableCell className="text-xs text-right tabular-nums">{(r.debet || 0).toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                                        <TableCell className="text-xs text-right tabular-nums">{(r.kredit || 0).toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
       </div>
 
-      <div className="flex-1 rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm overflow-hidden flex flex-col">
         <div className="px-4 py-3 flex items-center justify-between border-b border-[#b7e4c7] bg-[#f0fdf4]">
           <div className="text-[12px] font-semibold text-[#14532d]">Detail</div>
           <div className="flex items-center gap-2">
@@ -183,7 +271,7 @@ function SilpaTab() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-hidden p-4">
+        <div className="flex-1 min-h-0 overflow-hidden p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex-1">
               <Progress value={progressValue} className="h-2 bg-[#d1fae5]" />
@@ -198,7 +286,7 @@ function SilpaTab() {
                 <TabsTrigger value="rincian" className="text-[12px]">Rincian</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="data" className="mt-4">
+              <TabsContent value="data" className="mt-4 flex-1 overflow-auto">
                 <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
                   <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-x-4 gap-y-3 items-center text-[12px]">
                     <Label className="text-[12px]">Tanggal</Label>
@@ -225,7 +313,7 @@ function SilpaTab() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="rincian" className="mt-4">
+              <TabsContent value="rincian" className="mt-4 flex-1 overflow-auto">
                 <div className="rounded-xl border border-[#d1fae5] bg-white p-4 overflow-hidden">
                   <div className="text-[12px] font-semibold text-[#14532d] mb-3">Rincian SiLPA Tahun Sebelumnya</div>
                   <div className="rounded-xl border border-[#eef2ff] bg-[#fbfcff] overflow-hidden max-h-56 overflow-auto">
@@ -337,6 +425,7 @@ function SilpaTab() {
 function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   const [allItems, setAllItems] = useState<PenerimaanItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [detailTab, setDetailTab] = useState<"tbp" | "penyetor" | "bank" | "rincian">("tbp");
 
@@ -447,6 +536,11 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
     // Auto-calc jumlah from rincian
     const jumlah = form.rincian.length > 0 ? form.rincian.reduce((s, r) => s + r.nilai, 0) : form.jumlah;
     if (!jumlah || jumlah <= 0) return toast.error("Jumlah harus lebih dari 0");
+    if (!form.nama) return toast.error("Isi nama penyetor");
+    if (jenis === "bank") {
+      if (!form.rekening) return toast.error("Isi rekening");
+      if (!form.namaBank) return toast.error("Isi nama bank");
+    }
 
     const now = Date.now();
     const actor = {
@@ -528,12 +622,13 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
     if (!form.tanggal) e.tanggal = "Wajib diisi";
     if (!form.uraian) e.uraian = "Wajib diisi";
     if (!calcJumlah || calcJumlah <= 0) e.jumlah = "Harus lebih dari 0";
+    if (!form.nama) e.nama = "Wajib diisi";
     if (jenis === "bank") {
       if (!form.rekening) e.rekening = "Wajib diisi";
       if (!form.namaBank) e.namaBank = "Wajib diisi";
     }
     return e;
-  }, [mode, form.tanggal, form.uraian, form.rekening, form.namaBank, calcJumlah, jenis]);
+  }, [mode, form.tanggal, form.uraian, form.nama, form.rekening, form.namaBank, calcJumlah, jenis]);
 
   const invalid = (k: string) => !!errors[k];
 
@@ -596,12 +691,13 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
         <div className="text-[11px] opacity-90">{items.length} transaksi</div>
       </div>
 
-      <div className="flex-1 overflow-hidden p-4 grid grid-rows-[auto_1fr_auto] gap-4">
-        <div className="rounded-xl border border-[#b7e4c7] bg-white/80 backdrop-blur-sm overflow-hidden">
-          <div className="overflow-auto">
+      <div className="flex-1 min-h-0 overflow-hidden p-4 grid grid-rows-[minmax(0,320px)_minmax(0,1fr)_auto] gap-4">
+        <div className="min-h-0 rounded-xl border border-[#b7e4c7] bg-white/80 backdrop-blur-sm overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-[#ecfdf5] sticky top-0 z-10">
+                  <TableHead className="w-10"></TableHead>
                   <TableHead className="w-8"></TableHead>
                   <TableHead className="text-[11px] font-semibold whitespace-nowrap">Tanggal</TableHead>
                   <TableHead className="text-[11px] font-semibold whitespace-nowrap">No Bukti</TableHead>
@@ -612,26 +708,123 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
               <TableBody>
                 {items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-10 text-sm">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-10 text-sm">
                       Belum ada data
                     </TableCell>
                   </TableRow>
                 ) : items.map((item, idx) => {
                   const active = selectedId === item.id;
+                  const expanded = expandedId === item.id;
+                  const rincCount = item.rincian?.length || 0;
                   return (
-                    <TableRow
-                      key={item.id}
-                      className={`cursor-pointer ${active ? "bg-[#d1fae5]" : (idx % 2 ? "bg-white/70" : "bg-transparent")} hover:bg-[#f0fdf4]`}
-                      onClick={() => { if (mode === "view") { setSelectedId(item.id); } }}
-                    >
-                      <TableCell className="text-[12px]">{active ? "●" : ""}</TableCell>
-                      <TableCell className="text-[12px] whitespace-nowrap">{item.tanggal}</TableCell>
-                      <TableCell className="text-[12px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
-                      <TableCell className="text-[12px] max-w-[560px]">
-                        <div className="truncate" title={item.uraian}>{item.uraian}</div>
-                      </TableCell>
-                      <TableCell className="text-[12px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
-                    </TableRow>
+                    <Fragment key={item.id}>
+                      <TableRow
+                        className={`cursor-pointer ${active ? "bg-[#d1fae5]" : (idx % 2 ? "bg-white/70" : "bg-transparent")} hover:bg-[#f0fdf4]`}
+                        onClick={() => { if (mode === "view") { setSelectedId(item.id); } }}
+                      >
+                        <TableCell className="text-[12px]">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            aria-label={expanded ? "Sembunyikan detail" : "Lihat detail"}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (mode !== "view") return;
+                              setSelectedId(item.id);
+                              setExpandedId((prev) => (prev === item.id ? null : item.id));
+                            }}
+                          >
+                            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </Button>
+                        </TableCell>
+                        <TableCell className="text-[12px]">{active ? "●" : ""}</TableCell>
+                        <TableCell className="text-[12px] whitespace-nowrap">{item.tanggal}</TableCell>
+                        <TableCell className="text-[12px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
+                        <TableCell className="text-[12px] max-w-[560px]">
+                          <div className="truncate" title={item.uraian}>{item.uraian}</div>
+                        </TableCell>
+                        <TableCell className="text-[12px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
+                      </TableRow>
+                      {expanded && (
+                        <TableRow className="bg-white/70">
+                          <TableCell colSpan={6} className="p-0">
+                            <div id={`penerimaan-detail-${item.id}`} className="px-4 py-3 border-t border-[#d1fae5]">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[12px]">
+                                <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
+                                  <div className="text-[11px] text-muted-foreground">Penyetor</div>
+                                  <div className="font-semibold text-[#14532d] truncate" title={item.nama || ""}>{item.nama || "—"}</div>
+                                </div>
+                                <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
+                                  <div className="text-[11px] text-muted-foreground">Terbilang</div>
+                                  <div className="font-semibold text-[#14532d] truncate" title={terbilangRupiah(item.jumlah || 0)}>{terbilangRupiah(item.jumlah || 0)}</div>
+                                </div>
+                                <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
+                                  <div className="text-[11px] text-muted-foreground">Rincian</div>
+                                  <div className="font-semibold text-[#14532d]">{rincCount} baris</div>
+                                </div>
+                              </div>
+
+                              {jenis === "bank" && (
+                                <div className="mt-3 rounded-xl border border-[#d1fae5] bg-white p-3">
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[12px]">
+                                    <div>
+                                      <div className="text-[11px] text-muted-foreground">Rekening</div>
+                                      <div className="font-semibold text-[#14532d] font-mono">{item.rekening || "—"}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-[11px] text-muted-foreground">Nama Bank</div>
+                                      <div className="font-semibold text-[#14532d]">{item.namaBank || "—"}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-[11px] text-muted-foreground">KPPN</div>
+                                      <div className="font-semibold text-[#14532d]">{item.kppn || "—"}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {rincCount > 0 && (
+                                <div className="mt-3 rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm overflow-hidden">
+                                  <div className="max-h-48 overflow-auto">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow className="bg-[#ecfdf5] sticky top-0 z-10">
+                                          <TableHead className="w-10 text-[11px] font-semibold text-[#14532d]">#</TableHead>
+                                          <TableHead className="text-[11px] font-semibold text-[#14532d] whitespace-nowrap">Kd Rincian</TableHead>
+                                          <TableHead className="text-[11px] font-semibold text-[#14532d] whitespace-nowrap">Sumber</TableHead>
+                                          <TableHead className="text-[11px] font-semibold text-[#14532d]">Nama Rekening</TableHead>
+                                          <TableHead className="text-[11px] font-semibold text-[#14532d] text-right whitespace-nowrap">Nilai</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {(item.rincian || []).map((r, ridx) => (
+                                          <TableRow key={r.id} className={`${ridx % 2 ? "bg-white/70" : "bg-transparent"} hover:bg-[#f0fdf4]`}>
+                                            <TableCell className="text-[12px] text-muted-foreground">{ridx + 1}</TableCell>
+                                            <TableCell className="text-[12px] font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
+                                            <TableCell className="text-[12px] whitespace-nowrap">{r.sumberDana || "—"}</TableCell>
+                                            <TableCell className="text-[12px]">
+                                              <div className="truncate max-w-[520px]" title={r.namaRekening}>{r.namaRekening}</div>
+                                            </TableCell>
+                                            <TableCell className="text-[12px] text-right whitespace-nowrap tabular-nums">{fmt(r.nilai || 0)}</TableCell>
+                                          </TableRow>
+                                        ))}
+                                        <TableRow className="bg-[#f0fdf4] font-semibold">
+                                          <TableCell colSpan={4} className="text-[12px] text-right text-[#14532d]">Total</TableCell>
+                                          <TableCell className="text-[12px] text-right text-[#14532d] tabular-nums">{fmt((item.rincian || []).reduce((s, r) => s + (r.nilai || 0), 0))}</TableCell>
+                                        </TableRow>
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   );
                 })}
               </TableBody>
@@ -639,7 +832,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-[#b7e4c7] bg-white/80 backdrop-blur-sm overflow-hidden flex flex-col">
+        <div className="min-h-0 rounded-xl border border-[#b7e4c7] bg-white/80 backdrop-blur-sm overflow-hidden flex flex-col">
           <div className="px-4 py-3 flex items-center justify-between border-b border-[#d1fae5] bg-white/60">
             <div className="text-[11px] text-muted-foreground">
               {mode !== "view" ? "Auto-save aktif" : "Pilih data atau klik Tambah untuk mulai input"}
@@ -650,7 +843,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           </div>
 
           {(selectedItem || mode !== "view") ? (
-            <div className="flex-1 overflow-hidden p-4">
+            <div className="flex-1 min-h-0 overflow-hidden p-4">
               <div className="flex items-center gap-3 mb-3 md:hidden">
                 <div className="flex-1">
                   <Progress value={progressValue} className="h-2 bg-[#d1fae5]" />
@@ -667,17 +860,17 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                   ))}
                 </TabsList>
 
-                <TabsContent value="tbp" className="mt-4">
+                <TabsContent value="tbp" className="mt-4 flex-1 overflow-auto">
                   <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
                     <div className="text-[12px] font-semibold text-[#14532d] mb-3">TBP</div>
                     <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 text-[12px] items-center">
-                      <Label className={`${invalid("noBukti") ? "text-destructive" : ""}`}>No Bukti</Label>
+                      <Label>No Bukti</Label>
                       {mode !== "view" ? (
                         <Input
                           value={form.noBukti}
                           onChange={(e) => setForm({ ...form, noBukti: e.target.value })}
                           placeholder={generateNoBukti()}
-                          className={`h-9 text-[12px] ${invalid("noBukti") ? "border-destructive" : ""}`}
+                          className="h-9 text-[12px]"
                         />
                       ) : (
                         <Input value={selectedItem?.noBukti || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
@@ -730,14 +923,22 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="penyetor" className="mt-4">
+                <TabsContent value="penyetor" className="mt-4 flex-1 overflow-auto">
                   <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
                     <div className="text-[12px] font-semibold text-[#14532d] mb-3">Penyetor</div>
                     <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 items-center text-[12px]">
-                      <Label>Nama</Label>
+                      <Label className={`${invalid("nama") ? "text-destructive" : ""}`}>Nama</Label>
                       {mode !== "view" ? (
                         <>
-                          <Input list="penerimaan-nama" value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} className="h-9 text-[12px]" />
+                          <div className="space-y-1">
+                            <Input
+                              list="penerimaan-nama"
+                              value={form.nama}
+                              onChange={(e) => setForm({ ...form, nama: e.target.value })}
+                              className={`h-9 text-[12px] ${invalid("nama") ? "border-destructive" : ""}`}
+                            />
+                            {invalid("nama") && <div className="text-[11px] text-destructive">Wajib diisi</div>}
+                          </div>
                           <datalist id="penerimaan-nama">{namaSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
                         </>
                       ) : (
@@ -768,7 +969,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                 </TabsContent>
 
                 {jenis === "bank" && (
-                  <TabsContent value="bank" className="mt-4">
+                  <TabsContent value="bank" className="mt-4 flex-1 overflow-auto">
                     <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
                       <div className="text-[12px] font-semibold text-[#14532d] mb-3">Bank Penerima</div>
                       <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 items-center text-[12px]">
@@ -819,7 +1020,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                   </TabsContent>
                 )}
 
-                <TabsContent value="rincian" className="mt-4">
+                <TabsContent value="rincian" className="mt-4 flex-1 overflow-auto">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between text-[12px]">
                       <div className="font-semibold text-[#14532d]">
