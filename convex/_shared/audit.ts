@@ -1,4 +1,4 @@
-import crypto from "crypto";
+const webCrypto = (globalThis as any).crypto;
 
 function safeStringify(value: unknown, maxLen = 8000) {
   try {
@@ -12,8 +12,18 @@ function safeStringify(value: unknown, maxLen = 8000) {
   }
 }
 
-function hashJson(value: unknown) {
-  return crypto.createHash("sha256").update(safeStringify(value, 200_000)).digest("hex");
+function bytesToHex(bytes: Uint8Array) {
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) out += bytes[i].toString(16).padStart(2, "0");
+  return out;
+}
+
+async function hashJson(value: unknown) {
+  if (!webCrypto?.subtle) throw new Error("Crypto not available");
+  const s = safeStringify(value, 200_000);
+  const data = new TextEncoder().encode(s);
+  const hash = await webCrypto.subtle.digest("SHA-256", data);
+  return bytesToHex(new Uint8Array(hash));
 }
 
 export async function writeAuditLog(db: any, input: {
@@ -38,4 +48,3 @@ export async function writeAuditLog(db: any, input: {
 }
 
 export const auditUtils = { safeStringify, hashJson };
-

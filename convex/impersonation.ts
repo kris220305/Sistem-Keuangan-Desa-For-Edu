@@ -11,8 +11,8 @@ export const saveBackup = mutationGeneric({
   handler: async ({ db }, { adminToken, snapshot }) => {
     await assertAdmin(db, adminToken);
     const key = process.env.IMPERSONATION_ENCRYPTION_KEY || "";
-    const adminTokenHash = hashAdminToken(adminToken);
-    const enc = encryptJson(snapshot, key);
+    const adminTokenHash = await hashAdminToken(adminToken);
+    const enc = await encryptJson(snapshot, key);
     const existing = await db
       .query("impersonationBackups")
       .withIndex("by_adminTokenHash", (q) => q.eq("adminTokenHash", adminTokenHash))
@@ -42,13 +42,13 @@ export const getBackup = queryGeneric({
   handler: async ({ db }, { adminToken }) => {
     await assertAdmin(db, adminToken);
     const key = process.env.IMPERSONATION_ENCRYPTION_KEY || "";
-    const adminTokenHash = hashAdminToken(adminToken);
+    const adminTokenHash = await hashAdminToken(adminToken);
     const row = await db
       .query("impersonationBackups")
       .withIndex("by_adminTokenHash", (q) => q.eq("adminTokenHash", adminTokenHash))
       .first();
     if (!row) return null;
-    return decryptJson({ iv: row.iv, tag: row.tag, ciphertext: row.ciphertext }, key) as Record<string, string | null>;
+    return (await decryptJson({ iv: row.iv, tag: row.tag, ciphertext: row.ciphertext }, key)) as Record<string, string | null>;
   },
 });
 
@@ -56,7 +56,7 @@ export const clearBackup = mutationGeneric({
   args: { adminToken: v.string() },
   handler: async ({ db }, { adminToken }) => {
     await assertAdmin(db, adminToken);
-    const adminTokenHash = hashAdminToken(adminToken);
+    const adminTokenHash = await hashAdminToken(adminToken);
     const row = await db
       .query("impersonationBackups")
       .withIndex("by_adminTokenHash", (q) => q.eq("adminTokenHash", adminTokenHash))
@@ -87,8 +87,8 @@ export const recordEvent = mutationGeneric({
   handler: async ({ db }, { adminToken, targetSessionId, actionType, payload }) => {
     await assertAdmin(db, adminToken);
     const key = process.env.IMPERSONATION_ENCRYPTION_KEY || "";
-    const adminTokenHash = hashAdminToken(adminToken);
-    const enc = encryptJson(payload, key);
+    const adminTokenHash = await hashAdminToken(adminToken);
+    const enc = await encryptJson(payload, key);
     const id = await db.insert("impersonationHistory", {
       adminTokenHash,
       targetSessionId,
@@ -110,4 +110,3 @@ export const recordEvent = mutationGeneric({
     return id;
   },
 });
-

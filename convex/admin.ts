@@ -1,8 +1,8 @@
-import crypto from "crypto";
 import { mutationGeneric, queryGeneric } from "convex/server";
 import { v } from "convex/values";
 import { assertAdmin, hashAdminToken } from "./_shared/adminAuth";
 import { writeAuditLog } from "./_shared/audit";
+import { cryptoUtils } from "./_shared/crypto";
 
 export const login = mutationGeneric({
   args: { password: v.string() },
@@ -11,8 +11,8 @@ export const login = mutationGeneric({
     if (!expected) throw new Error("Admin password not configured");
     if (password !== expected) throw new Error("Password salah");
 
-    const token = crypto.randomBytes(32).toString("hex");
-    const tokenHash = hashAdminToken(token);
+    const token = cryptoUtils.bytesToHex(cryptoUtils.randomBytes(32));
+    const tokenHash = await hashAdminToken(token);
     const now = Date.now();
     const expiresAt = now + 12 * 60 * 60 * 1000;
 

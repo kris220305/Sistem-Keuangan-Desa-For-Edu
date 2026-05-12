@@ -1,7 +1,6 @@
 import { mutationGeneric, queryGeneric } from "convex/server";
 import { v } from "convex/values";
 import { assertAdmin } from "./_shared/adminAuth";
-import { hashAdminToken } from "./_shared/adminAuth";
 import { writeAuditLog } from "./_shared/audit";
 
 function normalizeLimit(limit: number | undefined) {
@@ -141,7 +140,7 @@ export const _test = { normalizeLimit, cleanupCutoffMs };
 export const remove = mutationGeneric({
   args: { adminToken: v.string(), sessionId: v.string() },
   handler: async ({ db }, { adminToken, sessionId }) => {
-    await assertAdmin(db, adminToken);
+    const admin = await assertAdmin(db, adminToken);
     const existing = await db
       .query("userSessions")
       .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
@@ -150,7 +149,7 @@ export const remove = mutationGeneric({
       await db.delete(existing._id);
       try {
         await writeAuditLog(db, {
-          actorId: `admin:${hashAdminToken(adminToken)}`,
+          actorId: `admin:${(admin as any).tokenHash}`,
           actionType: "sessions.remove",
           targetType: "userSessions",
           targetId: String(existing._id),

@@ -151,8 +151,8 @@ export const upsert = mutationGeneric({
       .query("groupStates")
       .withIndex("by_groupId", (q) => q.eq("groupId", groupId))
       .unique();
-    const oldHash = existing ? auditUtils.hashJson(existing.state) : null;
-    const newHash = auditUtils.hashJson(state);
+    const oldHash = existing ? await auditUtils.hashJson(existing.state) : null;
+    const newHash = await auditUtils.hashJson(state);
     const payload = {
       groupId,
       state,
@@ -195,8 +195,8 @@ export const merge = mutationGeneric({
       .withIndex("by_groupId", (q) => q.eq("groupId", groupId))
       .unique();
     const merged = existing ? mergeStatesServer(existing.state, state) : state;
-    const oldHash = existing ? auditUtils.hashJson(existing.state) : null;
-    const newHash = auditUtils.hashJson(merged);
+    const oldHash = existing ? await auditUtils.hashJson(existing.state) : null;
+    const newHash = await auditUtils.hashJson(merged);
     const payload = {
       groupId,
       state: merged,
@@ -239,7 +239,7 @@ export const clear = mutationGeneric({
       .withIndex("by_groupId", (q) => q.eq("groupId", groupId))
       .unique();
     if (existing) {
-      const oldHash = auditUtils.hashJson(existing.state);
+      const oldHash = await auditUtils.hashJson(existing.state);
       await db.delete(existing._id);
       await writeAuditLog(db, {
         actorId: sessionId,

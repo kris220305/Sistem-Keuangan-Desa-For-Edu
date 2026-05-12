@@ -7,10 +7,9 @@ describe("convex audit utils", () => {
     expect(s.length).toBeLessThanOrEqual(20);
   });
 
-  it("hashJson deterministik", () => {
-    const h1 = auditUtils.hashJson({ a: 1, b: [2, 3] });
-    const h2 = auditUtils.hashJson({ a: 1, b: [2, 3] });
+  it("hashJson deterministik", async () => {
+    const h1 = await auditUtils.hashJson({ a: 1, b: [2, 3] });
+    const h2 = await auditUtils.hashJson({ a: 1, b: [2, 3] });
     expect(h1).toBe(h2);
   });
 });
-
