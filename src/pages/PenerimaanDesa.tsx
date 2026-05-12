@@ -143,21 +143,21 @@ function SilpaTab() {
         <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">REALISASI SILPA TAHUN SEBELUMNYA</div>
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-rows-[minmax(0,320px)_minmax(0,1fr)] gap-3 p-3">
-      <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col gap-3 p-3">
+      <div className="h-[clamp(160px,32vh,320px)] border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
         <div className="px-3 py-2 flex items-center justify-between bg-[#f4f4f4] border-b border-[#d0d0d0] text-[#111827]">
           <div className="text-[12px] font-semibold">Daftar SiLPA</div>
           <div className="text-[11px] text-muted-foreground">{items.length} data</div>
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto">
-          <Table>
+          <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
-                <TableHead className="text-xs font-semibold">Tanggal</TableHead>
-                <TableHead className="text-xs font-semibold">Nomor Bukti / Ref</TableHead>
-                <TableHead className="text-xs font-semibold">Uraian</TableHead>
-                <TableHead className="text-xs font-semibold text-center">Status</TableHead>
+                <TableHead className="h-9 px-2 text-[12px] font-semibold whitespace-nowrap w-[130px]">Tanggal</TableHead>
+                <TableHead className="h-9 px-2 text-[12px] font-semibold whitespace-nowrap w-[220px]">Nomor Bukti / Ref</TableHead>
+                <TableHead className="h-9 px-2 text-[12px] font-semibold min-w-[320px]">Uraian</TableHead>
+                <TableHead className="h-9 px-2 text-[12px] font-semibold text-center whitespace-nowrap w-[110px]">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -171,12 +171,12 @@ function SilpaTab() {
                     className={`cursor-pointer transition-colors ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/60" : "bg-transparent")} hover:bg-[#f0fdf4]`}
                     onClick={() => { if (mode === "view") setSelectedId(item.id); }}
                   >
-                      <TableCell className="text-xs whitespace-nowrap">{item.tanggal}</TableCell>
-                      <TableCell className="text-xs font-mono whitespace-nowrap">{item.nomorBukti}</TableCell>
-                      <TableCell className="text-xs max-w-[560px]">
+                      <TableCell className="px-2 py-1.5 text-[12px] whitespace-nowrap">{item.tanggal}</TableCell>
+                      <TableCell className="px-2 py-1.5 text-[12px] font-mono whitespace-nowrap">{item.nomorBukti}</TableCell>
+                      <TableCell className="px-2 py-1.5 text-[12px]">
                         <div className="truncate" title={item.uraian}>{item.uraian}</div>
                       </TableCell>
-                      <TableCell className="text-xs text-center">
+                      <TableCell className="px-2 py-1.5 text-[12px] text-center">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.isProses ? "bg-[#dcfce7] text-[#166534]" : "bg-[#fef9c3] text-[#854d0e]"}`}>
                           {item.isProses ? "Proses" : "Belum"}
                         </span>
@@ -621,17 +621,17 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
         <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">{title}</div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-hidden p-3 grid grid-rows-[minmax(0,320px)_minmax(0,1fr)_auto] gap-3">
-        <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 overflow-hidden p-3 flex flex-col gap-3">
+        <div className="h-[clamp(180px,35vh,340px)] border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
           <div className="flex-1 min-h-0 overflow-auto">
-            <Table>
+            <Table className="min-w-[860px]">
               <TableHeader>
                 <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
-                  <TableHead className="w-8"></TableHead>
-                  <TableHead className="text-[11px] font-semibold whitespace-nowrap">Tanggal</TableHead>
-                  <TableHead className="text-[11px] font-semibold whitespace-nowrap">No Bukti</TableHead>
-                  <TableHead className="text-[11px] font-semibold">Uraian</TableHead>
-                  <TableHead className="text-[11px] font-semibold text-right whitespace-nowrap">Jumlah</TableHead>
+                  <TableHead className="h-9 px-2 w-8"></TableHead>
+                  <TableHead className="h-9 px-2 text-[12px] font-semibold whitespace-nowrap w-[120px]">Tanggal</TableHead>
+                  <TableHead className="h-9 px-2 text-[12px] font-semibold whitespace-nowrap w-[220px]">No Bukti</TableHead>
+                  <TableHead className="h-9 px-2 text-[12px] font-semibold min-w-[360px]">Uraian</TableHead>
+                  <TableHead className="h-9 px-2 text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">Jumlah</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -649,13 +649,13 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                       className={`cursor-pointer ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/70" : "bg-transparent")} hover:bg-[#f0fdf4]`}
                       onClick={() => { if (mode === "view") { setSelectedId(item.id); } }}
                     >
-                        <TableCell className="text-[12px] text-center font-mono">{active ? "▶" : ""}</TableCell>
-                        <TableCell className="text-[12px] whitespace-nowrap">{item.tanggal}</TableCell>
-                        <TableCell className="text-[12px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
-                        <TableCell className="text-[12px] max-w-[560px]">
+                        <TableCell className="px-2 py-1.5 text-[12px] text-center font-mono">{active ? "▶" : ""}</TableCell>
+                        <TableCell className="px-2 py-1.5 text-[12px] whitespace-nowrap">{item.tanggal}</TableCell>
+                        <TableCell className="px-2 py-1.5 text-[12px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
+                        <TableCell className="px-2 py-1.5 text-[12px]">
                           <div className="truncate" title={item.uraian}>{item.uraian}</div>
                         </TableCell>
-                        <TableCell className="text-[12px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
+                        <TableCell className="px-2 py-1.5 text-[12px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
                       </TableRow>
                   );
                 })}
@@ -664,14 +664,14 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           </div>
         </div>
 
-        <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
           <div className="px-3 py-2 flex items-center justify-between border-b border-[#d0d0d0] bg-[#f4f4f4]">
             <div className="text-[11px] text-muted-foreground">{mode !== "view" ? "Auto-save aktif" : "Pilih data atau klik Tambah untuk mulai input"}</div>
             <div className="w-48 hidden md:block"><Progress value={progressValue} className="h-2 bg-[#e5e5e5]" /></div>
           </div>
 
           {(selectedItem || mode !== "view") ? (
-            <div className="flex-1 min-h-0 overflow-hidden p-4">
+            <div className="flex-1 min-h-0 overflow-hidden p-3">
               <div className="flex items-center gap-3 mb-3 md:hidden">
                 <div className="flex-1">
                   <Progress value={progressValue} className="h-2 bg-[#d1fae5]" />
@@ -679,8 +679,8 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                 <div className="text-[11px] text-muted-foreground">{Math.round(progressValue)}%</div>
               </div>
 
-              <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full flex flex-col">
-                <TabsList className="bg-white/70 border border-[#d1fae5] rounded-xl p-1 h-10 justify-start">
+              <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full min-h-0 flex flex-col">
+                <TabsList className="bg-[#f4f4f4] border border-[#d0d0d0] rounded-none p-1 h-10 justify-start">
                   {steps.map((s) => (
                     <TabsTrigger key={s.id} value={s.id} className="text-[12px]">
                       {s.label}
@@ -688,7 +688,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                   ))}
                 </TabsList>
 
-                <TabsContent value="tbp" className="mt-4 flex-1 overflow-auto">
+                <TabsContent value="tbp" className="mt-3 flex-1 min-h-0 overflow-auto">
                   <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
                     <div className="text-[12px] font-semibold text-[#14532d] mb-3">TBP</div>
                     <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 text-[12px] items-center">
@@ -751,7 +751,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                   </div>
                 </TabsContent>
 
-                <TabsContent forceMount value="penyetor" className="mt-4 flex-1 overflow-auto">
+                <TabsContent forceMount value="penyetor" className="mt-3 flex-1 min-h-0 overflow-auto">
                   <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
                     <div className="text-[12px] font-semibold text-[#14532d] mb-3">Penyetor</div>
                     <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 items-center text-[12px]">
@@ -797,7 +797,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                 </TabsContent>
 
                 {jenis === "bank" && (
-                  <TabsContent forceMount value="bank" className="mt-4 flex-1 overflow-auto">
+                  <TabsContent forceMount value="bank" className="mt-3 flex-1 min-h-0 overflow-auto">
                     <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
                       <div className="text-[12px] font-semibold text-[#14532d] mb-3">Bank Penerima</div>
                       <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 items-center text-[12px]">
@@ -848,7 +848,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                   </TabsContent>
                 )}
 
-                <TabsContent value="rincian" className="mt-4 flex-1 overflow-auto">
+                <TabsContent value="rincian" className="mt-3 flex-1 min-h-0 overflow-auto">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between text-[12px]">
                       <div className="font-semibold text-[#14532d]">

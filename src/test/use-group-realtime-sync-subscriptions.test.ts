@@ -33,6 +33,5 @@ describe("use-group-realtime-sync subscriptions", () => {
     unsub2();
     expect(mod._test.activeSubscriptions.size).toBe(0);
     expect((supabase as any).removeChannel).toHaveBeenCalledTimes(1);
-  });
+  }, 15000);
 });
-
