@@ -16,9 +16,10 @@ import { appendMutasiKasAudit } from "@/data/mutasi-kas-audit";
 import { applyAutoMutasiForPenerimaanTunai } from "@/lib/penerimaan-tunai-mutasi";
 import { Combobox } from "@/components/ui/combobox";
 import { terbilangRupiah } from "@/lib/terbilang-id";
-import { Banknote, Landmark, Layers, Printer, Plus, Pencil, Trash2, X, Save, DoorOpen, List, ChevronDown, ChevronRight } from "lucide-react";
+import { Banknote, Landmark, Layers, Printer, Plus, Pencil, Trash2, X, Save, DoorOpen, List } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import bgSawah from "@/assets/bg-sawah-sunset.jpg";
 
 type Mode = "view" | "tambah" | "ubah";
 type ActiveTab = "silpa" | "tunai" | "bank";
@@ -27,7 +28,6 @@ type ActiveTab = "silpa" | "tunai" | "bank";
 function SilpaTab() {
   const [items, setItems] = useState<SilpaItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [detailTab, setDetailTab] = useState<"data" | "rincian">("data");
 
@@ -138,19 +138,22 @@ function SilpaTab() {
   const progressValue = detailTab === "data" ? 50 : 100;
 
   return (
-    <div className="h-full min-h-0 grid grid-rows-[minmax(0,320px)_minmax(0,1fr)] gap-4">
-      <div className="min-h-0 rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm overflow-hidden flex flex-col">
-        <div className="px-4 py-3 flex items-center justify-between bg-gradient-to-r from-[#166534] via-[#22c55e] to-[#bbf7d0] text-white">
-          <div className="text-[12px] font-extrabold tracking-wide uppercase">Realisasi SiLPA Tahun Sebelumnya</div>
-          <div className="text-[11px] opacity-90">{items.length} data</div>
+    <div className="h-full min-h-0 flex flex-col border border-[#8e8e8e] bg-[#efefef] overflow-hidden">
+      <div className="bg-gradient-to-b from-[#0b8a1f] to-[#c7f3c7] border-b border-[#8e8e8e]">
+        <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">REALISASI SILPA TAHUN SEBELUMNYA</div>
+      </div>
+
+      <div className="flex-1 min-h-0 grid grid-rows-[minmax(0,320px)_minmax(0,1fr)] gap-3 p-3">
+      <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+        <div className="px-3 py-2 flex items-center justify-between bg-[#f4f4f4] border-b border-[#d0d0d0] text-[#111827]">
+          <div className="text-[12px] font-semibold">Daftar SiLPA</div>
+          <div className="text-[11px] text-muted-foreground">{items.length} data</div>
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#ecfdf5]">
-                <TableHead className="text-xs font-semibold w-10"></TableHead>
-                <TableHead className="text-xs font-semibold w-8">#</TableHead>
+              <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
                 <TableHead className="text-xs font-semibold">Tanggal</TableHead>
                 <TableHead className="text-xs font-semibold">Nomor Bukti / Ref</TableHead>
                 <TableHead className="text-xs font-semibold">Uraian</TableHead>
@@ -159,40 +162,15 @@ function SilpaTab() {
             </TableHeader>
             <TableBody>
               {items.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8 text-sm">Belum ada data SiLPA</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8 text-sm">Belum ada data SiLPA</TableCell></TableRow>
               ) : items.map((item, idx) => {
                 const active = selectedId === item.id;
-                const expanded = expandedId === item.id;
-                const rinc = item.rincian || [];
-                const totDeb = rinc.reduce((s, r) => s + (r.debet || 0), 0);
-                const totKre = rinc.reduce((s, r) => s + (r.kredit || 0), 0);
                 return (
-                  <Fragment key={item.id}>
-                    <TableRow
-                      className={`cursor-pointer transition-colors ${active ? "bg-[#d1fae5]" : (idx % 2 ? "bg-white/60" : "bg-transparent")} hover:bg-[#f0fdf4]`}
-                      onClick={() => { if (mode === "view") setSelectedId(item.id); }}
-                    >
-                      <TableCell className="text-xs">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0"
-                          aria-label={expanded ? "Sembunyikan detail" : "Lihat detail"}
-                          aria-expanded={expanded}
-                          aria-controls={`silpa-detail-${item.id}`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (mode !== "view") return;
-                            setSelectedId(item.id);
-                            setExpandedId((prev) => (prev === item.id ? null : item.id));
-                          }}
-                        >
-                          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        </Button>
-                      </TableCell>
-                      <TableCell className="text-xs">{idx + 1}</TableCell>
+                  <TableRow
+                    key={item.id}
+                    className={`cursor-pointer transition-colors ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/60" : "bg-transparent")} hover:bg-[#f0fdf4]`}
+                    onClick={() => { if (mode === "view") setSelectedId(item.id); }}
+                  >
                       <TableCell className="text-xs whitespace-nowrap">{item.tanggal}</TableCell>
                       <TableCell className="text-xs font-mono whitespace-nowrap">{item.nomorBukti}</TableCell>
                       <TableCell className="text-xs max-w-[560px]">
@@ -204,53 +182,6 @@ function SilpaTab() {
                         </span>
                       </TableCell>
                     </TableRow>
-                    {expanded && (
-                      <TableRow className="bg-white/70">
-                        <TableCell colSpan={6} className="p-0">
-                          <div id={`silpa-detail-${item.id}`} className="px-4 py-3 border-t border-[#d1fae5]">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[12px]">
-                              <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
-                                <div className="text-[11px] text-muted-foreground">Rincian</div>
-                                <div className="font-semibold text-[#14532d]">{rinc.length} baris</div>
-                              </div>
-                              <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
-                                <div className="text-[11px] text-muted-foreground">Total Debet</div>
-                                <div className="font-semibold text-[#14532d] tabular-nums">{totDeb.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</div>
-                              </div>
-                              <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
-                                <div className="text-[11px] text-muted-foreground">Total Kredit</div>
-                                <div className="font-semibold text-[#14532d] tabular-nums">{totKre.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</div>
-                              </div>
-                            </div>
-                            {rinc.length > 0 && (
-                              <div className="mt-3 rounded-xl border border-[#eef2ff] bg-[#fbfcff] overflow-hidden max-h-52 overflow-auto">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow className="bg-[#ecfdf5] sticky top-0 z-10">
-                                      <TableHead className="text-[11px] font-semibold">Kd Rincian</TableHead>
-                                      <TableHead className="text-[11px] font-semibold">Nama Rincian</TableHead>
-                                      <TableHead className="text-[11px] font-semibold text-right">Debet</TableHead>
-                                      <TableHead className="text-[11px] font-semibold text-right">Kredit</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {rinc.map((r) => (
-                                      <TableRow key={r.id} className="hover:bg-[#f0fdf4]">
-                                        <TableCell className="text-xs font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
-                                        <TableCell className="text-xs">{r.namaRekening}</TableCell>
-                                        <TableCell className="text-xs text-right tabular-nums">{(r.debet || 0).toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
-                                        <TableCell className="text-xs text-right tabular-nums">{(r.kredit || 0).toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </Fragment>
                 );
               })}
             </TableBody>
@@ -258,14 +189,14 @@ function SilpaTab() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm overflow-hidden flex flex-col">
-        <div className="px-4 py-3 flex items-center justify-between border-b border-[#b7e4c7] bg-[#f0fdf4]">
-          <div className="text-[12px] font-semibold text-[#14532d]">Detail</div>
+      <div className="flex-1 min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+        <div className="px-3 py-2 flex items-center justify-between border-b border-[#d0d0d0] bg-[#f4f4f4]">
+          <div className="text-[12px] font-semibold text-[#111827]">Detail</div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={handleProses} disabled={mode !== "view" || !selectedItem}>
+            <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleProses} disabled={mode !== "view" || !selectedItem}>
               Proses
             </Button>
-            <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={handleUnProses} disabled={mode !== "view" || !selectedItem}>
+            <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleUnProses} disabled={mode !== "view" || !selectedItem}>
               UnProses
             </Button>
           </div>
@@ -281,45 +212,45 @@ function SilpaTab() {
 
           {(selectedItem || mode !== "view") ? (
             <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full flex flex-col">
-              <TabsList className="bg-white/70 border border-[#d1fae5] rounded-xl p-1 h-10 justify-start">
+              <TabsList className="bg-[#f4f4f4] border border-[#d0d0d0] rounded-none p-1 h-10 justify-start">
                 <TabsTrigger value="data" className="text-[12px]">Data</TabsTrigger>
                 <TabsTrigger value="rincian" className="text-[12px]">Rincian</TabsTrigger>
               </TabsList>
 
               <TabsContent value="data" className="mt-4 flex-1 overflow-auto">
-                <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
+                <div className="border border-[#d0d0d0] bg-white p-4">
                   <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-x-4 gap-y-3 items-center text-[12px]">
                     <Label className="text-[12px]">Tanggal</Label>
                     {mode !== "view" ? (
                       <Input type="date" value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} className="h-9 text-[12px]" />
                     ) : (
-                      <Input value={selectedItem?.tanggal || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                      <Input value={selectedItem?.tanggal || ""} readOnly className="h-9 text-[12px] bg-[#f2f2f2] rounded-none" />
                     )}
 
                     <Label className="text-[12px]">Nomor Bukti / Ref</Label>
                     {mode !== "view" ? (
                       <Input value={form.nomorBukti} onChange={e => setForm({ ...form, nomorBukti: e.target.value })} className="h-9 text-[12px]" />
                     ) : (
-                      <Input value={selectedItem?.nomorBukti || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                      <Input value={selectedItem?.nomorBukti || ""} readOnly className="h-9 text-[12px] bg-[#f2f2f2] rounded-none" />
                     )}
 
                     <Label className="text-[12px]">Uraian</Label>
                     {mode !== "view" ? (
                       <Input value={form.uraian} onChange={e => setForm({ ...form, uraian: e.target.value })} className="h-9 text-[12px]" />
                     ) : (
-                      <Input value={selectedItem?.uraian || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                      <Input value={selectedItem?.uraian || ""} readOnly className="h-9 text-[12px] bg-[#f2f2f2] rounded-none" />
                     )}
                   </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="rincian" className="mt-4 flex-1 overflow-auto">
-                <div className="rounded-xl border border-[#d1fae5] bg-white p-4 overflow-hidden">
+                <div className="border border-[#d0d0d0] bg-white p-4 overflow-hidden">
                   <div className="text-[12px] font-semibold text-[#14532d] mb-3">Rincian SiLPA Tahun Sebelumnya</div>
-                  <div className="rounded-xl border border-[#eef2ff] bg-[#fbfcff] overflow-hidden max-h-56 overflow-auto">
+                  <div className="border border-[#d0d0d0] bg-white overflow-hidden max-h-56 overflow-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-[#ecfdf5]">
+                        <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
                           <TableHead className="text-[11px] font-semibold">RincianSD</TableHead>
                           <TableHead className="text-[11px] font-semibold">Nama Rincian</TableHead>
                           <TableHead className="text-[11px] font-semibold text-right">Debet</TableHead>
@@ -331,7 +262,7 @@ function SilpaTab() {
                         {displayRincian.length === 0 ? (
                           <TableRow><TableCell colSpan={mode !== "view" ? 5 : 4} className="text-center text-muted-foreground py-6 text-xs">Belum ada rincian</TableCell></TableRow>
                         ) : displayRincian.map(r => (
-                          <TableRow key={r.id} className="hover:bg-[#f0fdf4]">
+                          <TableRow key={r.id} className="hover:bg-[#e8f2ff]">
                             <TableCell className="text-xs font-mono">{r.kodeRekening}</TableCell>
                             <TableCell className="text-xs">{r.namaRekening}</TableCell>
                             <TableCell className="text-xs text-right">{r.debet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
@@ -343,7 +274,7 @@ function SilpaTab() {
                             )}
                           </TableRow>
                         ))}
-                        <TableRow className="bg-[#f0fdf4] font-bold">
+                        <TableRow className="bg-[#f4f4f4] font-bold">
                           <TableCell colSpan={2} className="text-xs text-right">Total</TableCell>
                           <TableCell className="text-xs text-right">{totalDebet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-xs text-right">{totalKredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
@@ -380,7 +311,7 @@ function SilpaTab() {
                         </div>
                       </div>
                       <div className="flex justify-end">
-                        <Button size="sm" className="h-9 text-[12px]" onClick={addRincian}>Tambah</Button>
+                        <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={addRincian}>Tambah</Button>
                       </div>
                     </div>
                   )}
@@ -394,28 +325,29 @@ function SilpaTab() {
           )}
         </div>
 
-        <div className="border-t border-[#b7e4c7] bg-white/60 px-4 py-3 flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={handleTambah} disabled={mode !== "view"}>
+        <div className="border-t border-[#8e8e8e] bg-[#f4f4f4] px-4 py-3 flex items-center gap-2">
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleTambah} disabled={mode !== "view"}>
             <Plus className="h-4 w-4 mr-2" /> Tambah
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={handleUbah} disabled={mode !== "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleUbah} disabled={mode !== "view"}>
             <Pencil className="h-4 w-4 mr-2" /> Ubah
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] text-destructive" onClick={handleHapus} disabled={mode !== "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none text-destructive" onClick={handleHapus} disabled={mode !== "view"}>
             <Trash2 className="h-4 w-4 mr-2" /> Hapus
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={handleBatal} disabled={mode === "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleBatal} disabled={mode === "view"}>
             <X className="h-4 w-4 mr-2" /> Batal
           </Button>
-          <Button size="sm" className="h-9 text-[12px]" onClick={handleSimpan} disabled={mode === "view"}>
+          <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={handleSimpan} disabled={mode === "view"}>
             <Save className="h-4 w-4 mr-2" /> Simpan
           </Button>
           <div className="flex-1" />
           <span className="text-[11px] text-muted-foreground">Record {items.length > 0 ? (items.findIndex(i => i.id === selectedId) + 1) : 0}/{items.length}</span>
-          <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={() => window.history.back()}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={() => window.history.back()}>
             <DoorOpen className="h-4 w-4 mr-2" /> Tutup
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -425,7 +357,6 @@ function SilpaTab() {
 function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   const [allItems, setAllItems] = useState<PenerimaanItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [detailTab, setDetailTab] = useState<"tbp" | "penyetor" | "bank" | "rincian">("tbp");
 
@@ -685,19 +616,17 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   }, [rincianForm.kodeRekening, rincianForm.nilai, rincianForm.sumberDana, rincianInfo]);
 
   return (
-    <div className="h-full flex flex-col rounded-2xl border border-[#b7e4c7] bg-[#f3fbf4] overflow-hidden">
-      <div className="px-4 py-3 flex items-center justify-between bg-gradient-to-r from-[#166534] via-[#22c55e] to-[#bbf7d0] text-white">
-        <div className="text-sm font-semibold tracking-wide">{title}</div>
-        <div className="text-[11px] opacity-90">{items.length} transaksi</div>
+    <div className="h-full min-h-0 flex flex-col border border-[#8e8e8e] bg-[#efefef] overflow-hidden">
+      <div className="bg-gradient-to-b from-[#f3fff3] to-[#d5f5d5] border-b border-[#8e8e8e]">
+        <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">{title}</div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-hidden p-4 grid grid-rows-[minmax(0,320px)_minmax(0,1fr)_auto] gap-4">
-        <div className="min-h-0 rounded-xl border border-[#b7e4c7] bg-white/80 backdrop-blur-sm overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 overflow-hidden p-3 grid grid-rows-[minmax(0,320px)_minmax(0,1fr)_auto] gap-3">
+        <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
           <div className="flex-1 min-h-0 overflow-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#ecfdf5] sticky top-0 z-10">
-                  <TableHead className="w-10"></TableHead>
+                <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
                   <TableHead className="w-8"></TableHead>
                   <TableHead className="text-[11px] font-semibold whitespace-nowrap">Tanggal</TableHead>
                   <TableHead className="text-[11px] font-semibold whitespace-nowrap">No Bukti</TableHead>
@@ -708,39 +637,19 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
               <TableBody>
                 {items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-10 text-sm">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-10 text-sm">
                       Belum ada data
                     </TableCell>
                   </TableRow>
                 ) : items.map((item, idx) => {
                   const active = selectedId === item.id;
-                  const expanded = expandedId === item.id;
-                  const rincCount = item.rincian?.length || 0;
                   return (
-                    <Fragment key={item.id}>
-                      <TableRow
-                        className={`cursor-pointer ${active ? "bg-[#d1fae5]" : (idx % 2 ? "bg-white/70" : "bg-transparent")} hover:bg-[#f0fdf4]`}
-                        onClick={() => { if (mode === "view") { setSelectedId(item.id); } }}
-                      >
-                        <TableCell className="text-[12px]">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0"
-                            aria-label={expanded ? "Sembunyikan detail" : "Lihat detail"}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (mode !== "view") return;
-                              setSelectedId(item.id);
-                              setExpandedId((prev) => (prev === item.id ? null : item.id));
-                            }}
-                          >
-                            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                          </Button>
-                        </TableCell>
-                        <TableCell className="text-[12px]">{active ? "●" : ""}</TableCell>
+                    <TableRow
+                      key={item.id}
+                      className={`cursor-pointer ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/70" : "bg-transparent")} hover:bg-[#f0fdf4]`}
+                      onClick={() => { if (mode === "view") { setSelectedId(item.id); } }}
+                    >
+                        <TableCell className="text-[12px] text-center font-mono">{active ? "▶" : ""}</TableCell>
                         <TableCell className="text-[12px] whitespace-nowrap">{item.tanggal}</TableCell>
                         <TableCell className="text-[12px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
                         <TableCell className="text-[12px] max-w-[560px]">
@@ -748,83 +657,6 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                         </TableCell>
                         <TableCell className="text-[12px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
                       </TableRow>
-                      {expanded && (
-                        <TableRow className="bg-white/70">
-                          <TableCell colSpan={6} className="p-0">
-                            <div id={`penerimaan-detail-${item.id}`} className="px-4 py-3 border-t border-[#d1fae5]">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[12px]">
-                                <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
-                                  <div className="text-[11px] text-muted-foreground">Penyetor</div>
-                                  <div className="font-semibold text-[#14532d] truncate" title={item.nama || ""}>{item.nama || "—"}</div>
-                                </div>
-                                <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
-                                  <div className="text-[11px] text-muted-foreground">Terbilang</div>
-                                  <div className="font-semibold text-[#14532d] truncate" title={terbilangRupiah(item.jumlah || 0)}>{terbilangRupiah(item.jumlah || 0)}</div>
-                                </div>
-                                <div className="rounded-lg border border-[#d1fae5] bg-white p-3">
-                                  <div className="text-[11px] text-muted-foreground">Rincian</div>
-                                  <div className="font-semibold text-[#14532d]">{rincCount} baris</div>
-                                </div>
-                              </div>
-
-                              {jenis === "bank" && (
-                                <div className="mt-3 rounded-xl border border-[#d1fae5] bg-white p-3">
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[12px]">
-                                    <div>
-                                      <div className="text-[11px] text-muted-foreground">Rekening</div>
-                                      <div className="font-semibold text-[#14532d] font-mono">{item.rekening || "—"}</div>
-                                    </div>
-                                    <div>
-                                      <div className="text-[11px] text-muted-foreground">Nama Bank</div>
-                                      <div className="font-semibold text-[#14532d]">{item.namaBank || "—"}</div>
-                                    </div>
-                                    <div>
-                                      <div className="text-[11px] text-muted-foreground">KPPN</div>
-                                      <div className="font-semibold text-[#14532d]">{item.kppn || "—"}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {rincCount > 0 && (
-                                <div className="mt-3 rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm overflow-hidden">
-                                  <div className="max-h-48 overflow-auto">
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow className="bg-[#ecfdf5] sticky top-0 z-10">
-                                          <TableHead className="w-10 text-[11px] font-semibold text-[#14532d]">#</TableHead>
-                                          <TableHead className="text-[11px] font-semibold text-[#14532d] whitespace-nowrap">Kd Rincian</TableHead>
-                                          <TableHead className="text-[11px] font-semibold text-[#14532d] whitespace-nowrap">Sumber</TableHead>
-                                          <TableHead className="text-[11px] font-semibold text-[#14532d]">Nama Rekening</TableHead>
-                                          <TableHead className="text-[11px] font-semibold text-[#14532d] text-right whitespace-nowrap">Nilai</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {(item.rincian || []).map((r, ridx) => (
-                                          <TableRow key={r.id} className={`${ridx % 2 ? "bg-white/70" : "bg-transparent"} hover:bg-[#f0fdf4]`}>
-                                            <TableCell className="text-[12px] text-muted-foreground">{ridx + 1}</TableCell>
-                                            <TableCell className="text-[12px] font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
-                                            <TableCell className="text-[12px] whitespace-nowrap">{r.sumberDana || "—"}</TableCell>
-                                            <TableCell className="text-[12px]">
-                                              <div className="truncate max-w-[520px]" title={r.namaRekening}>{r.namaRekening}</div>
-                                            </TableCell>
-                                            <TableCell className="text-[12px] text-right whitespace-nowrap tabular-nums">{fmt(r.nilai || 0)}</TableCell>
-                                          </TableRow>
-                                        ))}
-                                        <TableRow className="bg-[#f0fdf4] font-semibold">
-                                          <TableCell colSpan={4} className="text-[12px] text-right text-[#14532d]">Total</TableCell>
-                                          <TableCell className="text-[12px] text-right text-[#14532d] tabular-nums">{fmt((item.rincian || []).reduce((s, r) => s + (r.nilai || 0), 0))}</TableCell>
-                                        </TableRow>
-                                      </TableBody>
-                                    </Table>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </Fragment>
                   );
                 })}
               </TableBody>
@@ -832,14 +664,10 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           </div>
         </div>
 
-        <div className="min-h-0 rounded-xl border border-[#b7e4c7] bg-white/80 backdrop-blur-sm overflow-hidden flex flex-col">
-          <div className="px-4 py-3 flex items-center justify-between border-b border-[#d1fae5] bg-white/60">
-            <div className="text-[11px] text-muted-foreground">
-              {mode !== "view" ? "Auto-save aktif" : "Pilih data atau klik Tambah untuk mulai input"}
-            </div>
-            <div className="w-48 hidden md:block">
-              <Progress value={progressValue} className="h-2 bg-[#d1fae5]" />
-            </div>
+        <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+          <div className="px-3 py-2 flex items-center justify-between border-b border-[#d0d0d0] bg-[#f4f4f4]">
+            <div className="text-[11px] text-muted-foreground">{mode !== "view" ? "Auto-save aktif" : "Pilih data atau klik Tambah untuk mulai input"}</div>
+            <div className="w-48 hidden md:block"><Progress value={progressValue} className="h-2 bg-[#e5e5e5]" /></div>
           </div>
 
           {(selectedItem || mode !== "view") ? (
@@ -923,7 +751,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="penyetor" className="mt-4 flex-1 overflow-auto">
+                <TabsContent forceMount value="penyetor" className="mt-4 flex-1 overflow-auto">
                   <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
                     <div className="text-[12px] font-semibold text-[#14532d] mb-3">Penyetor</div>
                     <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 items-center text-[12px]">
@@ -969,7 +797,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                 </TabsContent>
 
                 {jenis === "bank" && (
-                  <TabsContent value="bank" className="mt-4 flex-1 overflow-auto">
+                  <TabsContent forceMount value="bank" className="mt-4 flex-1 overflow-auto">
                     <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
                       <div className="text-[12px] font-semibold text-[#14532d] mb-3">Bank Penerima</div>
                       <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 items-center text-[12px]">
@@ -1192,38 +1020,38 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-9 text-[12px]" disabled>
+        <div className="border-t border-[#8e8e8e] bg-[#f4f4f4] px-3 py-2 flex items-center gap-2">
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" disabled>
             <Printer className="h-4 w-4 mr-2" /> Cetak
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={handleTambah} disabled={mode !== "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleTambah} disabled={mode !== "view"}>
             <Plus className="h-4 w-4 mr-2" /> Tambah
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={handleUbah} disabled={mode !== "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleUbah} disabled={mode !== "view"}>
             <Pencil className="h-4 w-4 mr-2" /> Ubah
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] text-destructive" onClick={handleHapus} disabled={mode !== "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none text-destructive" onClick={handleHapus} disabled={mode !== "view"}>
             <Trash2 className="h-4 w-4 mr-2" /> Hapus
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={handleBatal} disabled={mode === "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleBatal} disabled={mode === "view"}>
             <X className="h-4 w-4 mr-2" /> Batal
           </Button>
           {jenis === "tunai" ? (
             <>
-              <Button size="sm" className="h-9 text-[12px]" onClick={() => handleSimpan({ catatMutasiTunai: true })} disabled={mode === "view"}>
+              <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: true })} disabled={mode === "view"}>
                 <Save className="h-4 w-4 mr-2" /> Simpan + Mutasi
               </Button>
-              <Button size="sm" variant="secondary" className="h-9 text-[12px]" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
+              <Button size="sm" variant="secondary" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
                 <Save className="h-4 w-4 mr-2" /> Simpan
               </Button>
             </>
           ) : (
-            <Button size="sm" className="h-9 text-[12px]" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
+            <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
               <Save className="h-4 w-4 mr-2" /> Simpan
             </Button>
           )}
           <div className="flex-1" />
-          <Button size="sm" variant="outline" className="h-9 text-[12px]" onClick={() => window.history.back()}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={() => window.history.back()}>
             <DoorOpen className="h-4 w-4 mr-2" /> Tutup
           </Button>
         </div>
@@ -1244,57 +1072,51 @@ export default function PenerimaanDesa() {
     <div className="flex flex-col h-full">
       <FormPageHeader title="Penerimaan dan Penyetoran" subtitle="Realisasi Pendapatan Desa" />
 
-      <div className="flex-1 p-4 overflow-hidden">
-        <div className="h-full flex flex-col rounded-2xl overflow-hidden border border-[#b7e4c7] bg-[#f3fbf4]">
-          <div className="px-4 py-4 flex items-center justify-between bg-gradient-to-r from-[#166534] via-[#22c55e] to-[#bbf7d0] text-white">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.3em] opacity-80">Penerimaan Desa</div>
-              <div className="text-lg font-extrabold tracking-wide">{namaDesa}</div>
+      <div className="flex-1 p-3 overflow-hidden">
+        <div className="h-full flex flex-col border border-[#8e8e8e] bg-[#efefef] overflow-hidden">
+          <div className="bg-gradient-to-b from-[#0b8a1f] to-[#c7f3c7] border-b border-[#8e8e8e]">
+            <div className="py-2 text-center font-extrabold tracking-widest text-[#0b2a0f]">
+              {namaDesa.toUpperCase()}
             </div>
-            <div className="text-[12px] opacity-90">Input Sekali, Output Banyak</div>
           </div>
 
-          <div className="flex-1 flex overflow-hidden">
-            <div className="w-72 p-4 bg-gradient-to-b from-[#d1fae5] via-[#ecfdf5] to-white/70 text-[#14532d] border-r border-[#b7e4c7]">
-              <div className="text-[11px] uppercase tracking-[0.25em] text-[#166534] mb-3">Menu</div>
-              <div className="space-y-2">
-                {([
-                  { id: "silpa", label: "SiLPA Tahun Lalu", Icon: Layers },
-                  { id: "tunai", label: "Penerimaan Tunai", Icon: Banknote },
-                  { id: "bank", label: "Penerimaan Bank", Icon: Landmark },
-                ] as Array<{ id: ActiveTab; label: string; Icon: any }>).map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setActiveTab(m.id)}
-                    className={`w-full flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors ${
-                      activeTab === m.id
-                        ? "bg-[#16a34a] text-white"
-                        : "bg-white/70 hover:bg-white text-[#14532d] border border-[#b7e4c7]"
-                    }`}
-                  >
-                    <m.Icon className="h-5 w-5 opacity-90" />
-                    <span className="truncate">{m.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-6 rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm p-3 text-[12px] text-[#14532d]">
-                <div className="font-semibold text-[#14532d] flex items-center gap-2">
-                  <Banknote className="h-4 w-4" /> Tips
-                </div>
-                <div className="mt-1 leading-relaxed">
-                  Gunakan Rincian untuk menghitung jumlah otomatis dan mengisi kode rekening lebih cepat.
+          <div className="flex-1 flex min-h-0 overflow-hidden">
+            <div
+              className="w-56 border-r border-[#8e8e8e] overflow-hidden"
+              style={{
+                backgroundImage: `url(${bgSawah})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="h-full bg-white/60 backdrop-blur-[1px] p-3">
+                <div className="text-[11px] font-semibold mb-2">Menu</div>
+                <div className="space-y-1">
+                  {([
+                    { id: "silpa", label: "SILPA Tahun Lalu", Icon: Layers },
+                    { id: "tunai", label: "Penerimaan Tunai", Icon: Banknote },
+                    { id: "bank", label: "Penerimaan Bank", Icon: Landmark },
+                  ] as Array<{ id: ActiveTab; label: string; Icon: any }>).map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setActiveTab(m.id)}
+                      className={`w-full flex items-center gap-2 px-2 py-2 text-[13px] border ${
+                        activeTab === m.id
+                          ? "bg-[#0b74d1] text-white border-[#0b74d1]"
+                          : "bg-white/70 hover:bg-white border-[#c8c8c8] text-[#1f2937]"
+                      }`}
+                    >
+                      <m.Icon className="h-4 w-4" />
+                      <span className="truncate">{m.label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 p-4 overflow-hidden">
-              {activeTab === "silpa" && (
-                <div className="h-full rounded-2xl border border-[#e6ebff] bg-white overflow-hidden">
-                  <SilpaTab />
-                </div>
-              )}
+            <div className="flex-1 min-h-0 overflow-hidden p-3">
+              {activeTab === "silpa" && <SilpaTab />}
               {activeTab === "tunai" && <PenerimaanTab jenis="tunai" />}
               {activeTab === "bank" && <PenerimaanTab jenis="bank" />}
             </div>

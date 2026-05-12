@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import PenerimaanDesa from "@/pages/PenerimaanDesa";
 
@@ -67,21 +67,19 @@ beforeEach(() => {
   seedLocalStorage();
 });
 
-describe("PenerimaanDesa – expand/collapse detail", () => {
-  it("menampilkan detail baris SiLPA saat expand", () => {
+describe("PenerimaanDesa – tampilan detail mengikuti baris yang dipilih", () => {
+  it("menampilkan detail SiLPA setelah memilih baris", () => {
     render(
       <MemoryRouter>
         <PenerimaanDesa />
       </MemoryRouter>,
     );
-    const btn = screen.getByLabelText("Lihat detail");
-    fireEvent.click(btn);
-    expect(screen.getByText("Total Debet")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Sembunyikan detail"));
-    expect(screen.queryByText("Total Debet")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("SILPA-001"));
+    expect(screen.getByDisplayValue("SILPA-001")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("SiLPA Tahun Lalu")).toBeInTheDocument();
   });
 
-  it("menampilkan detail baris Penerimaan Tunai saat expand", () => {
+  it("menampilkan detail Penerimaan Tunai setelah memilih baris", () => {
     render(
       <MemoryRouter>
         <PenerimaanDesa />
@@ -89,13 +87,15 @@ describe("PenerimaanDesa – expand/collapse detail", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Penerimaan Tunai" }));
     expect(screen.getByText("REALISASI PENERIMAAN TUNAI")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Lihat detail"));
-    const detail = document.getElementById("penerimaan-detail-t1");
-    expect(detail).toBeTruthy();
-    expect(within(detail as HTMLElement).getByText("Andi")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("0001/TBP/05.2001/2024"));
+    expect(screen.getByDisplayValue("0001/TBP/05.2001/2024")).toBeInTheDocument();
+    const tabPenyetor = screen.getByRole("tab", { name: "Penyetor" });
+    fireEvent.pointerDown(tabPenyetor);
+    fireEvent.click(tabPenyetor);
+    expect(screen.getByDisplayValue("Andi")).toBeInTheDocument();
   });
 
-  it("menampilkan detail baris Penerimaan Bank (blok bank) saat expand", () => {
+  it("menampilkan detail Penerimaan Bank setelah memilih baris", () => {
     render(
       <MemoryRouter>
         <PenerimaanDesa />
@@ -103,10 +103,11 @@ describe("PenerimaanDesa – expand/collapse detail", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Penerimaan Bank" }));
     expect(screen.getByText("REALISASI PENERIMAAN BANK")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Lihat detail"));
-    const detail = document.getElementById("penerimaan-detail-b1");
-    expect(detail).toBeTruthy();
-    expect(within(detail as HTMLElement).getByText("1234567890")).toBeInTheDocument();
-    expect(within(detail as HTMLElement).getByText("BRI")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("0002/TBP/05.2001/2024"));
+    const tabBank = screen.getByRole("tab", { name: "Bank" });
+    fireEvent.pointerDown(tabBank);
+    fireEvent.click(tabBank);
+    expect(screen.getByDisplayValue("1234567890")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("BRI")).toBeInTheDocument();
   });
 });
