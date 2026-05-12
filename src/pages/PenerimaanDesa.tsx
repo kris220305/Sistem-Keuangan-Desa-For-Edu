@@ -143,21 +143,21 @@ function SilpaTab() {
         <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">REALISASI SILPA TAHUN SEBELUMNYA</div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col gap-3 p-3">
-      <div className="h-[clamp(160px,32vh,320px)] border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 grid grid-rows-[minmax(0,200px)_minmax(0,1fr)] sm:grid-rows-[minmax(0,240px)_minmax(0,1fr)] lg:grid-rows-[minmax(0,320px)_minmax(0,1fr)] gap-3 p-3">
+      <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
         <div className="px-3 py-2 flex items-center justify-between bg-[#f4f4f4] border-b border-[#d0d0d0] text-[#111827]">
           <div className="text-[12px] font-semibold">Daftar SiLPA</div>
           <div className="text-[11px] text-muted-foreground">{items.length} data</div>
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto">
-          <Table className="min-w-[720px]">
+          <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
-                <TableHead className="h-9 px-2 text-[12px] font-semibold whitespace-nowrap w-[130px]">Tanggal</TableHead>
-                <TableHead className="h-9 px-2 text-[12px] font-semibold whitespace-nowrap w-[220px]">Nomor Bukti / Ref</TableHead>
-                <TableHead className="h-9 px-2 text-[12px] font-semibold min-w-[320px]">Uraian</TableHead>
-                <TableHead className="h-9 px-2 text-[12px] font-semibold text-center whitespace-nowrap w-[110px]">Status</TableHead>
+                <TableHead className="text-xs font-semibold w-[120px]">Tanggal</TableHead>
+                <TableHead className="text-xs font-semibold w-[220px]">Nomor Bukti / Ref</TableHead>
+                <TableHead className="text-xs font-semibold">Uraian</TableHead>
+                <TableHead className="text-xs font-semibold text-center w-[110px]">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -171,12 +171,12 @@ function SilpaTab() {
                     className={`cursor-pointer transition-colors ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/60" : "bg-transparent")} hover:bg-[#f0fdf4]`}
                     onClick={() => { if (mode === "view") setSelectedId(item.id); }}
                   >
-                      <TableCell className="px-2 py-1.5 text-[12px] whitespace-nowrap">{item.tanggal}</TableCell>
-                      <TableCell className="px-2 py-1.5 text-[12px] font-mono whitespace-nowrap">{item.nomorBukti}</TableCell>
-                      <TableCell className="px-2 py-1.5 text-[12px]">
-                        <div className="truncate" title={item.uraian}>{item.uraian}</div>
+                      <TableCell className="text-xs whitespace-nowrap">{item.tanggal}</TableCell>
+                      <TableCell className="text-xs font-mono whitespace-nowrap">{item.nomorBukti}</TableCell>
+                      <TableCell className="text-xs">
+                        <div className="truncate max-w-[240px] sm:max-w-[360px] md:max-w-[520px] lg:max-w-[720px]" title={item.uraian}>{item.uraian}</div>
                       </TableCell>
-                      <TableCell className="px-2 py-1.5 text-[12px] text-center">
+                      <TableCell className="text-xs text-center">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.isProses ? "bg-[#dcfce7] text-[#166534]" : "bg-[#fef9c3] text-[#854d0e]"}`}>
                           {item.isProses ? "Proses" : "Belum"}
                         </span>
@@ -202,7 +202,7 @@ function SilpaTab() {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden p-4">
+        <div className="flex-1 min-h-0 overflow-hidden p-3 md:p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex-1">
               <Progress value={progressValue} className="h-2 bg-[#d1fae5]" />
@@ -212,31 +212,31 @@ function SilpaTab() {
 
           {(selectedItem || mode !== "view") ? (
             <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full flex flex-col">
-              <TabsList className="bg-[#f4f4f4] border border-[#d0d0d0] rounded-none p-1 h-10 justify-start">
-                <TabsTrigger value="data" className="text-[12px]">Data</TabsTrigger>
-                <TabsTrigger value="rincian" className="text-[12px]">Rincian</TabsTrigger>
+              <TabsList className="bg-[#f4f4f4] border border-[#d0d0d0] rounded-none p-1 h-10 justify-start overflow-x-auto">
+                <TabsTrigger value="data" className="text-[13px]">Data</TabsTrigger>
+                <TabsTrigger value="rincian" className="text-[13px]">Rincian</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="data" className="mt-4 flex-1 overflow-auto">
+              <TabsContent value="data" className="mt-3 flex-1 min-h-0 overflow-auto">
                 <div className="border border-[#d0d0d0] bg-white p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-x-4 gap-y-3 items-center text-[12px]">
-                    <Label className="text-[12px]">Tanggal</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] gap-x-4 gap-y-3 items-center text-[13px]">
+                    <Label className="text-[13px]">Tanggal</Label>
                     {mode !== "view" ? (
-                      <Input type="date" value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} className="h-9 text-[12px]" />
+                      <Input type="date" value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} className="h-10 text-[13px] rounded-none" />
                     ) : (
                       <Input value={selectedItem?.tanggal || ""} readOnly className="h-9 text-[12px] bg-[#f2f2f2] rounded-none" />
                     )}
 
-                    <Label className="text-[12px]">Nomor Bukti / Ref</Label>
+                    <Label className="text-[13px]">Nomor Bukti / Ref</Label>
                     {mode !== "view" ? (
-                      <Input value={form.nomorBukti} onChange={e => setForm({ ...form, nomorBukti: e.target.value })} className="h-9 text-[12px]" />
+                      <Input value={form.nomorBukti} onChange={e => setForm({ ...form, nomorBukti: e.target.value })} className="h-10 text-[13px] rounded-none" />
                     ) : (
                       <Input value={selectedItem?.nomorBukti || ""} readOnly className="h-9 text-[12px] bg-[#f2f2f2] rounded-none" />
                     )}
 
-                    <Label className="text-[12px]">Uraian</Label>
+                    <Label className="text-[13px]">Uraian</Label>
                     {mode !== "view" ? (
-                      <Input value={form.uraian} onChange={e => setForm({ ...form, uraian: e.target.value })} className="h-9 text-[12px]" />
+                      <Input value={form.uraian} onChange={e => setForm({ ...form, uraian: e.target.value })} className="h-10 text-[13px] rounded-none" />
                     ) : (
                       <Input value={selectedItem?.uraian || ""} readOnly className="h-9 text-[12px] bg-[#f2f2f2] rounded-none" />
                     )}
@@ -244,11 +244,11 @@ function SilpaTab() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="rincian" className="mt-4 flex-1 overflow-auto">
+              <TabsContent value="rincian" className="mt-3 flex-1 min-h-0 overflow-auto">
                 <div className="border border-[#d0d0d0] bg-white p-4 overflow-hidden">
                   <div className="text-[12px] font-semibold text-[#14532d] mb-3">Rincian SiLPA Tahun Sebelumnya</div>
                   <div className="border border-[#d0d0d0] bg-white overflow-hidden max-h-56 overflow-auto">
-                    <Table>
+                    <Table className="min-w-[760px]">
                       <TableHeader>
                         <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
                           <TableHead className="text-[11px] font-semibold">RincianSD</TableHead>
@@ -263,10 +263,10 @@ function SilpaTab() {
                           <TableRow><TableCell colSpan={mode !== "view" ? 5 : 4} className="text-center text-muted-foreground py-6 text-xs">Belum ada rincian</TableCell></TableRow>
                         ) : displayRincian.map(r => (
                           <TableRow key={r.id} className="hover:bg-[#e8f2ff]">
-                            <TableCell className="text-xs font-mono">{r.kodeRekening}</TableCell>
-                            <TableCell className="text-xs">{r.namaRekening}</TableCell>
-                            <TableCell className="text-xs text-right">{r.debet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-xs text-right">{r.kredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="text-[13px] font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
+                            <TableCell className="text-[13px]">{r.namaRekening}</TableCell>
+                            <TableCell className="text-[13px] text-right tabular-nums">{r.debet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="text-[13px] text-right tabular-nums">{r.kredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
                             {mode !== "view" && (
                               <TableCell>
                                 <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive text-[11px]" onClick={() => removeRincian(r.id)}>Hapus</Button>
@@ -275,9 +275,9 @@ function SilpaTab() {
                           </TableRow>
                         ))}
                         <TableRow className="bg-[#f4f4f4] font-bold">
-                          <TableCell colSpan={2} className="text-xs text-right">Total</TableCell>
-                          <TableCell className="text-xs text-right">{totalDebet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-xs text-right">{totalKredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell colSpan={2} className="text-[13px] text-right">Total</TableCell>
+                          <TableCell className="text-[13px] text-right tabular-nums">{totalDebet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-[13px] text-right tabular-nums">{totalKredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
                           {mode !== "view" && <TableCell />}
                         </TableRow>
                       </TableBody>
@@ -293,21 +293,21 @@ function SilpaTab() {
                             const r = rekeningAset.find(x => x.kode === v);
                             setRincianForm({ ...rincianForm, kodeRekening: v, namaRekening: r?.uraian || "" });
                           }}>
-                            <SelectTrigger className="h-9 text-[12px]"><SelectValue placeholder="Pilih" /></SelectTrigger>
+                            <SelectTrigger className="h-10 text-[13px] rounded-none"><SelectValue placeholder="Pilih" /></SelectTrigger>
                             <SelectContent>{rekeningAset.map(r => <SelectItem key={r.kode} value={r.kode}>{r.kode}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div>
                           <Label className="text-[11px]">Nama Rincian</Label>
-                          <Input value={rincianForm.namaRekening} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                          <Input value={rincianForm.namaRekening} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                         </div>
                         <div>
                           <Label className="text-[11px]">Debet</Label>
-                          <Input type="number" value={rincianForm.debet || ""} onChange={e => setRincianForm({ ...rincianForm, debet: Number(e.target.value) })} className="h-9 text-[12px] text-right" />
+                          <Input type="number" value={rincianForm.debet || ""} onChange={e => setRincianForm({ ...rincianForm, debet: Number(e.target.value) })} className="h-10 text-[13px] text-right tabular-nums rounded-none" />
                         </div>
                         <div>
                           <Label className="text-[11px]">Kredit</Label>
-                          <Input type="number" value={rincianForm.kredit || ""} onChange={e => setRincianForm({ ...rincianForm, kredit: Number(e.target.value) })} className="h-9 text-[12px] text-right" />
+                          <Input type="number" value={rincianForm.kredit || ""} onChange={e => setRincianForm({ ...rincianForm, kredit: Number(e.target.value) })} className="h-10 text-[13px] text-right tabular-nums rounded-none" />
                         </div>
                       </div>
                       <div className="flex justify-end">
@@ -621,17 +621,17 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
         <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">{title}</div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-hidden p-3 flex flex-col gap-3">
-        <div className="h-[clamp(180px,35vh,340px)] border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 overflow-hidden p-3 grid grid-rows-[minmax(0,200px)_minmax(0,1fr)_auto] sm:grid-rows-[minmax(0,240px)_minmax(0,1fr)_auto] lg:grid-rows-[minmax(0,320px)_minmax(0,1fr)_auto] gap-3">
+        <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
           <div className="flex-1 min-h-0 overflow-auto">
             <Table className="min-w-[860px]">
               <TableHeader>
                 <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
-                  <TableHead className="h-9 px-2 w-8"></TableHead>
-                  <TableHead className="h-9 px-2 text-[12px] font-semibold whitespace-nowrap w-[120px]">Tanggal</TableHead>
-                  <TableHead className="h-9 px-2 text-[12px] font-semibold whitespace-nowrap w-[220px]">No Bukti</TableHead>
-                  <TableHead className="h-9 px-2 text-[12px] font-semibold min-w-[360px]">Uraian</TableHead>
-                  <TableHead className="h-9 px-2 text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">Jumlah</TableHead>
+                  <TableHead className="w-8"></TableHead>
+                  <TableHead className="text-[12px] font-semibold whitespace-nowrap w-[120px]">Tanggal</TableHead>
+                  <TableHead className="text-[12px] font-semibold whitespace-nowrap w-[240px]">No Bukti</TableHead>
+                  <TableHead className="text-[12px] font-semibold">Uraian</TableHead>
+                  <TableHead className="text-[12px] font-semibold text-right whitespace-nowrap w-[170px]">Jumlah</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -649,13 +649,13 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                       className={`cursor-pointer ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/70" : "bg-transparent")} hover:bg-[#f0fdf4]`}
                       onClick={() => { if (mode === "view") { setSelectedId(item.id); } }}
                     >
-                        <TableCell className="px-2 py-1.5 text-[12px] text-center font-mono">{active ? "▶" : ""}</TableCell>
-                        <TableCell className="px-2 py-1.5 text-[12px] whitespace-nowrap">{item.tanggal}</TableCell>
-                        <TableCell className="px-2 py-1.5 text-[12px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
-                        <TableCell className="px-2 py-1.5 text-[12px]">
-                          <div className="truncate" title={item.uraian}>{item.uraian}</div>
+                        <TableCell className="text-[13px] text-center font-mono">{active ? "▶" : ""}</TableCell>
+                        <TableCell className="text-[13px] whitespace-nowrap">{item.tanggal}</TableCell>
+                        <TableCell className="text-[13px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
+                        <TableCell className="text-[13px]">
+                          <div className="truncate max-w-[260px] sm:max-w-[380px] md:max-w-[560px] lg:max-w-[760px]" title={item.uraian}>{item.uraian}</div>
                         </TableCell>
-                        <TableCell className="px-2 py-1.5 text-[12px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
+                        <TableCell className="text-[13px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
                       </TableRow>
                   );
                 })}
@@ -664,14 +664,14 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
+        <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
           <div className="px-3 py-2 flex items-center justify-between border-b border-[#d0d0d0] bg-[#f4f4f4]">
             <div className="text-[11px] text-muted-foreground">{mode !== "view" ? "Auto-save aktif" : "Pilih data atau klik Tambah untuk mulai input"}</div>
             <div className="w-48 hidden md:block"><Progress value={progressValue} className="h-2 bg-[#e5e5e5]" /></div>
           </div>
 
           {(selectedItem || mode !== "view") ? (
-            <div className="flex-1 min-h-0 overflow-hidden p-3">
+            <div className="flex-1 min-h-0 overflow-hidden p-3 md:p-4">
               <div className="flex items-center gap-3 mb-3 md:hidden">
                 <div className="flex-1">
                   <Progress value={progressValue} className="h-2 bg-[#d1fae5]" />
@@ -679,29 +679,29 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                 <div className="text-[11px] text-muted-foreground">{Math.round(progressValue)}%</div>
               </div>
 
-              <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full min-h-0 flex flex-col">
-                <TabsList className="bg-[#f4f4f4] border border-[#d0d0d0] rounded-none p-1 h-10 justify-start">
+              <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full flex flex-col">
+                <TabsList className="bg-[#f4f4f4] border border-[#d0d0d0] rounded-none p-1 h-10 justify-start overflow-x-auto">
                   {steps.map((s) => (
-                    <TabsTrigger key={s.id} value={s.id} className="text-[12px]">
+                    <TabsTrigger key={s.id} value={s.id} className="text-[13px]">
                       {s.label}
                     </TabsTrigger>
                   ))}
                 </TabsList>
 
                 <TabsContent value="tbp" className="mt-3 flex-1 min-h-0 overflow-auto">
-                  <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
-                    <div className="text-[12px] font-semibold text-[#14532d] mb-3">TBP</div>
-                    <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 text-[12px] items-center">
+                  <div className="border border-[#d0d0d0] bg-white p-4">
+                    <div className="text-[13px] font-semibold text-[#111827] mb-3">TBP</div>
+                    <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-x-3 gap-y-3 text-[13px] items-center">
                       <Label>No Bukti</Label>
                       {mode !== "view" ? (
                         <Input
                           value={form.noBukti}
                           onChange={(e) => setForm({ ...form, noBukti: e.target.value })}
                           placeholder={generateNoBukti()}
-                          className="h-9 text-[12px]"
+                          className="h-10 text-[13px] rounded-none"
                         />
                       ) : (
-                        <Input value={selectedItem?.noBukti || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                        <Input value={selectedItem?.noBukti || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                       )}
 
                       <Label className={`${invalid("tanggal") ? "text-destructive" : ""}`}>Tgl Bukti</Label>
@@ -710,10 +710,10 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                           type="date"
                           value={form.tanggal}
                           onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
-                          className={`h-9 text-[12px] ${invalid("tanggal") ? "border-destructive" : ""}`}
+                          className={`h-10 text-[13px] rounded-none ${invalid("tanggal") ? "border-destructive" : ""}`}
                         />
                       ) : (
-                        <Input value={selectedItem?.tanggal || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                        <Input value={selectedItem?.tanggal || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                       )}
 
                       <Label className={`${invalid("uraian") ? "text-destructive" : ""}`}>Uraian</Label>
@@ -721,10 +721,10 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                         <Input
                           value={form.uraian}
                           onChange={(e) => setForm({ ...form, uraian: e.target.value })}
-                          className={`h-9 text-[12px] ${invalid("uraian") ? "border-destructive" : ""}`}
+                          className={`h-10 text-[13px] rounded-none ${invalid("uraian") ? "border-destructive" : ""}`}
                         />
                       ) : (
-                        <Input value={selectedItem?.uraian || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                        <Input value={selectedItem?.uraian || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                       )}
 
                       <Label className={`${invalid("jumlah") ? "text-destructive" : ""}`}>Jumlah</Label>
@@ -734,14 +734,14 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                           value={form.rincian.length > 0 ? calcJumlah : (form.jumlah || "")}
                           onChange={(e) => setForm({ ...form, jumlah: Number(e.target.value) })}
                           disabled={form.rincian.length > 0}
-                          className={`h-9 text-[12px] text-right ${invalid("jumlah") ? "border-destructive" : ""}`}
+                          className={`h-10 text-[13px] text-right tabular-nums rounded-none ${invalid("jumlah") ? "border-destructive" : ""}`}
                         />
                       ) : (
-                        <Input value={fmt(selectedItem?.jumlah || 0)} readOnly className="h-9 text-[12px] bg-[#f2f4fb] text-right" />
+                        <Input value={fmt(selectedItem?.jumlah || 0)} readOnly className="h-10 text-[13px] bg-[#f2f2f2] text-right tabular-nums rounded-none" />
                       )}
 
                       <Label>Terbilang</Label>
-                      <Input value={terbilang} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                      <Input value={terbilang} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                     </div>
                     {Object.keys(errors).length > 0 && mode !== "view" && (
                       <div className="mt-3 rounded-lg border border-[#ffd3d3] bg-[#fff1f1] p-3 text-[11px] text-destructive">
@@ -752,9 +752,9 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                 </TabsContent>
 
                 <TabsContent forceMount value="penyetor" className="mt-3 flex-1 min-h-0 overflow-auto">
-                  <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
-                    <div className="text-[12px] font-semibold text-[#14532d] mb-3">Penyetor</div>
-                    <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 items-center text-[12px]">
+                  <div className="border border-[#d0d0d0] bg-white p-4">
+                    <div className="text-[13px] font-semibold text-[#111827] mb-3">Penyetor</div>
+                    <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-x-3 gap-y-3 items-center text-[13px]">
                       <Label className={`${invalid("nama") ? "text-destructive" : ""}`}>Nama</Label>
                       {mode !== "view" ? (
                         <>
@@ -763,34 +763,34 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                               list="penerimaan-nama"
                               value={form.nama}
                               onChange={(e) => setForm({ ...form, nama: e.target.value })}
-                              className={`h-9 text-[12px] ${invalid("nama") ? "border-destructive" : ""}`}
+                              className={`h-10 text-[13px] rounded-none ${invalid("nama") ? "border-destructive" : ""}`}
                             />
                             {invalid("nama") && <div className="text-[11px] text-destructive">Wajib diisi</div>}
                           </div>
                           <datalist id="penerimaan-nama">{namaSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
                         </>
                       ) : (
-                        <Input value={selectedItem?.nama || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                        <Input value={selectedItem?.nama || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                       )}
 
                       <Label>Alamat</Label>
                       {mode !== "view" ? (
                         <>
-                          <Input list="penerimaan-alamat" value={form.alamat} onChange={(e) => setForm({ ...form, alamat: e.target.value })} className="h-9 text-[12px]" />
+                          <Input list="penerimaan-alamat" value={form.alamat} onChange={(e) => setForm({ ...form, alamat: e.target.value })} className="h-10 text-[13px] rounded-none" />
                           <datalist id="penerimaan-alamat">{alamatSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
                         </>
                       ) : (
-                        <Input value={selectedItem?.alamat || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                        <Input value={selectedItem?.alamat || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                       )}
 
                       <Label>Ttd</Label>
                       {mode !== "view" ? (
                         <>
-                          <Input list="penerimaan-ttd" value={form.ttd} onChange={(e) => setForm({ ...form, ttd: e.target.value })} className="h-9 text-[12px]" />
+                          <Input list="penerimaan-ttd" value={form.ttd} onChange={(e) => setForm({ ...form, ttd: e.target.value })} className="h-10 text-[13px] rounded-none" />
                           <datalist id="penerimaan-ttd">{ttdSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
                         </>
                       ) : (
-                        <Input value={selectedItem?.ttd || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                        <Input value={selectedItem?.ttd || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                       )}
                     </div>
                   </div>
@@ -798,17 +798,17 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
 
                 {jenis === "bank" && (
                   <TabsContent forceMount value="bank" className="mt-3 flex-1 min-h-0 overflow-auto">
-                    <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
-                      <div className="text-[12px] font-semibold text-[#14532d] mb-3">Bank Penerima</div>
-                      <div className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-x-3 gap-y-3 items-center text-[12px]">
+                    <div className="border border-[#d0d0d0] bg-white p-4">
+                      <div className="text-[13px] font-semibold text-[#111827] mb-3">Bank Penerima</div>
+                      <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-x-3 gap-y-3 items-center text-[13px]">
                         <Label>KPPN</Label>
                         {mode !== "view" ? (
                           <>
-                            <Input list="penerimaan-kppn" value={form.kppn || ""} onChange={(e) => setForm({ ...form, kppn: e.target.value })} className="h-9 text-[12px]" />
+                            <Input list="penerimaan-kppn" value={form.kppn || ""} onChange={(e) => setForm({ ...form, kppn: e.target.value })} className="h-10 text-[13px] rounded-none" />
                             <datalist id="penerimaan-kppn">{kppnSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
                           </>
                         ) : (
-                          <Input value={selectedItem?.kppn || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                          <Input value={selectedItem?.kppn || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                         )}
 
                         <Label className={`${invalid("rekening") ? "text-destructive" : ""}`}>Rekening</Label>
@@ -819,14 +819,14 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                                 list="penerimaan-rekening"
                                 value={form.rekening || ""}
                                 onChange={(e) => setForm({ ...form, rekening: e.target.value })}
-                                className={`h-9 text-[12px] ${invalid("rekening") ? "border-destructive" : ""}`}
+                                className={`h-10 text-[13px] rounded-none ${invalid("rekening") ? "border-destructive" : ""}`}
                               />
                               <datalist id="penerimaan-rekening">{rekeningSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
                             </>
-                            <Button type="button" variant="outline" className="h-9 px-3 text-[12px]" onClick={() => {}}>...</Button>
+                            <Button type="button" variant="outline" className="h-10 px-3 text-[13px] rounded-none" onClick={() => {}}>...</Button>
                           </div>
                         ) : (
-                          <Input value={selectedItem?.rekening || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                          <Input value={selectedItem?.rekening || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                         )}
 
                         <Label className={`${invalid("namaBank") ? "text-destructive" : ""}`}>Nama Bank</Label>
@@ -836,12 +836,12 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                               list="penerimaan-namaBank"
                               value={form.namaBank || ""}
                               onChange={(e) => setForm({ ...form, namaBank: e.target.value })}
-                              className={`h-9 text-[12px] ${invalid("namaBank") ? "border-destructive" : ""}`}
+                              className={`h-10 text-[13px] rounded-none ${invalid("namaBank") ? "border-destructive" : ""}`}
                             />
                             <datalist id="penerimaan-namaBank">{namaBankSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
                           </>
                         ) : (
-                          <Input value={selectedItem?.namaBank || ""} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                          <Input value={selectedItem?.namaBank || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
                         )}
                       </div>
                     </div>
@@ -850,24 +850,24 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
 
                 <TabsContent value="rincian" className="mt-3 flex-1 min-h-0 overflow-auto">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between text-[12px]">
-                      <div className="font-semibold text-[#14532d]">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <div className="font-semibold text-[#111827]">
                         Nomor Bukti: <span className="font-mono">{mode !== "view" ? (form.noBukti || generateNoBukti()) : (selectedItem?.noBukti || "")}</span>
                       </div>
-                      <div className="font-semibold text-[#14532d]">Rp {fmt(mode !== "view" ? calcJumlah : (selectedItem?.jumlah || 0))}</div>
+                      <div className="font-semibold text-[#111827]">Rp {fmt(mode !== "view" ? calcJumlah : (selectedItem?.jumlah || 0))}</div>
                     </div>
 
-                    <div className="rounded-xl border border-[#b7e4c7] bg-white/70 backdrop-blur-sm overflow-hidden">
-                      <div className="max-h-64 overflow-auto">
-                        <Table>
+                    <div className="border border-[#d0d0d0] bg-white overflow-hidden">
+                      <div className="max-h-[40vh] md:max-h-[46vh] overflow-auto">
+                        <Table className="min-w-[980px]">
                           <TableHeader>
-                            <TableRow className="bg-[#ecfdf5] sticky top-0 z-10">
-                              <TableHead className="w-10 text-[11px] font-semibold text-[#14532d]">#</TableHead>
-                              <TableHead className="text-[11px] font-semibold text-[#14532d] whitespace-nowrap">Kd Rincian</TableHead>
-                              <TableHead className="text-[11px] font-semibold text-[#14532d] whitespace-nowrap">Sumber</TableHead>
-                              <TableHead className="text-[11px] font-semibold text-[#14532d]">Nama Rekening</TableHead>
-                              <TableHead className="text-[11px] font-semibold text-[#14532d] text-right whitespace-nowrap">Nilai</TableHead>
-                              <TableHead className="text-[11px] font-semibold text-[#14532d] text-right whitespace-nowrap">Sisa</TableHead>
+                            <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
+                              <TableHead className="w-10 text-[12px] font-semibold">#</TableHead>
+                              <TableHead className="text-[12px] font-semibold whitespace-nowrap w-[160px]">Kd Rincian</TableHead>
+                              <TableHead className="text-[12px] font-semibold whitespace-nowrap w-[120px]">Sumber</TableHead>
+                              <TableHead className="text-[12px] font-semibold">Nama Rekening</TableHead>
+                              <TableHead className="text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">Nilai</TableHead>
+                              <TableHead className="text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">Sisa</TableHead>
                               {mode !== "view" && <TableHead className="w-14"></TableHead>}
                             </TableRow>
                           </TableHeader>
@@ -884,17 +884,17 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                               const sumber = r.sumberDana || info?.sumberDana || "";
                               const over = typeof sisa === "number" && sisa >= 0 && r.nilai > sisa;
                               return (
-                                <TableRow key={r.id} className={`${idx % 2 ? "bg-white/70" : "bg-transparent"} hover:bg-[#f0fdf4]`}>
-                                  <TableCell className="text-[12px] text-muted-foreground">{idx + 1}</TableCell>
-                                  <TableCell className="text-[12px] font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
-                                  <TableCell className="text-[12px] whitespace-nowrap">{sumber || "—"}</TableCell>
-                                  <TableCell className="text-[12px]">
-                                    <div className="truncate max-w-[520px]" title={r.namaRekening}>{r.namaRekening}</div>
+                                <TableRow key={r.id} className={`${idx % 2 ? "bg-white/70" : "bg-transparent"} hover:bg-[#e8f2ff]`}>
+                                  <TableCell className="text-[13px] text-muted-foreground">{idx + 1}</TableCell>
+                                  <TableCell className="text-[13px] font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
+                                  <TableCell className="text-[13px] whitespace-nowrap">{sumber || "—"}</TableCell>
+                                  <TableCell className="text-[13px]">
+                                    <div className="truncate max-w-[560px]" title={r.namaRekening}>{r.namaRekening}</div>
                                   </TableCell>
-                                  <TableCell className={`text-[12px] text-right whitespace-nowrap tabular-nums ${over ? "text-[#b91c1c] font-semibold" : ""}`}>
+                                  <TableCell className={`text-[13px] text-right whitespace-nowrap tabular-nums ${over ? "text-[#b91c1c] font-semibold" : ""}`}>
                                     {fmt(r.nilai)}
                                   </TableCell>
-                                  <TableCell className="text-[12px] text-right whitespace-nowrap tabular-nums text-muted-foreground">
+                                  <TableCell className="text-[13px] text-right whitespace-nowrap tabular-nums text-muted-foreground">
                                     {typeof sisa === "number" ? fmt(sisa) : "—"}
                                   </TableCell>
                                   {mode !== "view" && (
@@ -914,10 +914,10 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                               );
                             })}
                             {displayRincian.length > 0 && (
-                              <TableRow className="bg-[#f0fdf4] font-semibold">
-                                <TableCell colSpan={4} className="text-[12px] text-right text-[#14532d]">Total</TableCell>
-                                <TableCell className="text-[12px] text-right text-[#14532d] tabular-nums">{fmt(displayRincian.reduce((s, r) => s + (r.nilai || 0), 0))}</TableCell>
-                                <TableCell className="text-[12px] text-right text-[#14532d]"> </TableCell>
+                              <TableRow className="bg-[#f4f4f4] font-semibold">
+                                <TableCell colSpan={4} className="text-[13px] text-right text-[#111827]">Total</TableCell>
+                                <TableCell className="text-[13px] text-right text-[#111827] tabular-nums">{fmt(displayRincian.reduce((s, r) => s + (r.nilai || 0), 0))}</TableCell>
+                                <TableCell className="text-[13px] text-right text-[#111827]"> </TableCell>
                                 {mode !== "view" && <TableCell />}
                               </TableRow>
                             )}
@@ -928,19 +928,19 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
 
                     {mode !== "view" && (
                       <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3">
-                        <div className="rounded-xl border border-[#d1fae5] bg-white p-4">
+                        <div className="border border-[#d0d0d0] bg-white p-4">
                           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                            <div className="text-[12px] font-semibold text-[#14532d]">Tambah Rincian</div>
-                            <div className="flex items-center gap-2 text-[11px]">
+                            <div className="text-[13px] font-semibold text-[#111827]">Tambah Rincian</div>
+                            <div className="flex items-center gap-2 text-[12px]">
                               <span className="text-muted-foreground">Sisa:</span>
-                              <span className={`font-semibold tabular-nums ${rincianDraft.over ? "text-[#b91c1c]" : "text-[#14532d]"}`}>
+                              <span className={`font-semibold tabular-nums ${rincianDraft.over ? "text-[#b91c1c]" : "text-[#111827]"}`}>
                                 {typeof rincianDraft.sisa === "number" ? `Rp ${fmt(rincianDraft.sisa)}` : "—"}
                               </span>
                               <span className="text-muted-foreground">Sumber:</span>
-                              <span className="font-semibold text-[#14532d]">{rincianDraft.sumberDana || "—"}</span>
+                              <span className="font-semibold text-[#111827]">{rincianDraft.sumberDana || "—"}</span>
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-x-4 gap-y-3 items-center text-[12px]">
+                          <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-x-4 gap-y-3 items-center text-[13px]">
                             <Label>Kd Rincian</Label>
                             <div className="flex gap-2">
                               <Combobox
@@ -952,11 +952,11 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                                 }}
                                 options={rincianOptions}
                                 placeholder="Pilih rekening..."
-                                className={`h-9 text-[12px] flex-1 ${!rincianDraft.kodeOk ? "border-destructive" : ""}`}
+                                className={`h-10 text-[13px] flex-1 rounded-none ${!rincianDraft.kodeOk ? "border-destructive" : ""}`}
                                 contentClassName="w-[520px]"
                                 searchPlaceholder="Cari kode / nama rekening..."
                               />
-                              <Button type="button" variant="outline" className="h-9 px-3 text-[12px]" disabled>
+                              <Button type="button" variant="outline" className="h-10 px-3 text-[13px] rounded-none" disabled>
                                 ...
                               </Button>
                             </div>
@@ -969,7 +969,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
 
                             <Label>Sumber Dana</Label>
                             <Select value={rincianForm.sumberDana} onValueChange={v => setRincianForm({ ...rincianForm, sumberDana: v })}>
-                              <SelectTrigger className="h-9 text-[12px]"><SelectValue placeholder="Pilih" /></SelectTrigger>
+                              <SelectTrigger className="h-10 text-[13px] rounded-none"><SelectValue placeholder="Pilih" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="PAD">PAD</SelectItem>
                                 <SelectItem value="DDS">DDS (Dana Desa)</SelectItem>
@@ -982,7 +982,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                             </Select>
 
                             <Label>Nama Rekening</Label>
-                            <Input value={rincianForm.namaRekening} readOnly className="h-9 text-[12px] bg-[#f2f4fb]" />
+                            <Input value={rincianForm.namaRekening} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
 
                             <Label>Nilai</Label>
                             <div className="space-y-1">
@@ -990,7 +990,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                                 type="number"
                                 value={rincianForm.nilai || ""}
                                 onChange={e => setRincianForm({ ...rincianForm, nilai: Number(e.target.value) })}
-                                className={`h-9 text-[12px] text-right tabular-nums ${!rincianDraft.nilaiOk ? "border-destructive" : ""}`}
+                                className={`h-10 text-[13px] text-right tabular-nums rounded-none ${!rincianDraft.nilaiOk ? "border-destructive" : ""}`}
                               />
                               {!rincianDraft.nilaiOk ? (
                                 <div className="text-[11px] text-destructive">Nilai harus lebih dari 0</div>
@@ -1003,7 +1003,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                           </div>
                         </div>
                         <div className="flex items-end justify-end">
-                          <Button type="button" className="h-10 text-[12px]" onClick={addRincian} disabled={!rincianDraft.canAdd}>
+                          <Button type="button" className="h-10 text-[13px] rounded-none" onClick={addRincian} disabled={!rincianDraft.canAdd}>
                             Tambah Rincian
                           </Button>
                         </div>
@@ -1020,7 +1020,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           )}
         </div>
 
-        <div className="border-t border-[#8e8e8e] bg-[#f4f4f4] px-3 py-2 flex items-center gap-2">
+        <div className="border-t border-[#8e8e8e] bg-[#f4f4f4] px-3 py-2 flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" disabled>
             <Printer className="h-4 w-4 mr-2" /> Cetak
           </Button>

@@ -93,7 +93,7 @@ describe("PenerimaanDesa – tampilan detail mengikuti baris yang dipilih", () =
     fireEvent.pointerDown(tabPenyetor);
     fireEvent.click(tabPenyetor);
     expect(screen.getByDisplayValue("Andi")).toBeInTheDocument();
-  }, 15000);
+  });
 
   it("menampilkan detail Penerimaan Bank setelah memilih baris", () => {
     render(
@@ -109,5 +109,5 @@ describe("PenerimaanDesa – tampilan detail mengikuti baris yang dipilih", () =
     fireEvent.click(tabBank);
     expect(screen.getByDisplayValue("1234567890")).toBeInTheDocument();
     expect(screen.getByDisplayValue("BRI")).toBeInTheDocument();
-  }, 15000);
+  });
 });
