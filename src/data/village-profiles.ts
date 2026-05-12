@@ -1,0 +1,105 @@
+import type { DesaProfile } from "./siskeudes-data";
+
+export interface VillageOption {
+  id: string;
+  profile: DesaProfile;
+}
+
+// Data fiktif untuk keperluan edukasi — tidak merujuk desa nyata
+export const villageProfiles: VillageOption[] = [
+  {
+    id: "desa-nusantara",
+    profile: {
+      namaDesa: "NUSANTARA",
+      kecamatan: "KECAMATAN PRATAMA",
+      kabupaten: "KABUPATEN CENDEKIA",
+      provinsi: "PROVINSI NUSANTARA",
+      kepalaDesaNama: "BUDI SANTOSO, S.Sos",
+      kepalaDesaNIP: "196801011990031001",
+      sekretarisNama: "SARI DEWI, S.AP",
+      sekretarisNIP: "198201012005012001",
+      bendaharaNama: "RINA KARTIKA, SE",
+      bendaharaNIP: "199001012012012001",
+      npwpDesa: "00.111.222.3-000.000",
+      tahunAnggaran: "2026",
+      alamatKantor: "Jl. Pendidikan No. 01, RT 01/RW 01",
+      kodePos: "10001",
+    },
+  },
+  {
+    id: "desa-harapan",
+    profile: {
+      namaDesa: "HARAPAN",
+      kecamatan: "KECAMATAN BINA ILMU",
+      kabupaten: "KABUPATEN CENDEKIA",
+      provinsi: "PROVINSI NUSANTARA",
+      kepalaDesaNama: "AGUS WIJAYA, S.Pd",
+      kepalaDesaNIP: "197501011998031001",
+      sekretarisNama: "DINA MARLINA, S.Sos",
+      sekretarisNIP: "198501012007012001",
+      bendaharaNama: "HADI KURNIAWAN, SE",
+      bendaharaNIP: "199201012014011001",
+      npwpDesa: "00.222.333.4-000.000",
+      tahunAnggaran: "2026",
+      alamatKantor: "Jl. Ilmu Pengetahuan No. 45",
+      kodePos: "20002",
+    },
+  },
+  {
+    id: "desa-makmur",
+    profile: {
+      namaDesa: "MAKMUR",
+      kecamatan: "KECAMATAN SEJAHTERA",
+      kabupaten: "KABUPATEN MANDIRI",
+      provinsi: "PROVINSI NUSANTARA",
+      kepalaDesaNama: "BAMBANG PURNOMO, SH",
+      kepalaDesaNIP: "196901011992031001",
+      sekretarisNama: "WATI SUSILOWATI, S.IP",
+      sekretarisNIP: "198801012010012001",
+      bendaharaNama: "EDI PRASETYO, SE",
+      bendaharaNIP: "199101012013011001",
+      npwpDesa: "00.333.444.5-000.000",
+      tahunAnggaran: "2026",
+      alamatKantor: "Jl. Kemakmuran No. 12",
+      kodePos: "30003",
+    },
+  },
+  {
+    id: "desa-sentosa",
+    profile: {
+      namaDesa: "SENTOSA",
+      kecamatan: "KECAMATAN DAMAI",
+      kabupaten: "KABUPATEN MANDIRI",
+      provinsi: "PROVINSI NUSANTARA",
+      kepalaDesaNama: "IR. JOKO SUSILO, MM",
+      kepalaDesaNIP: "197201011996031001",
+      sekretarisNama: "FITRI HANDAYANI, S.Sos",
+      sekretarisNIP: "198901012011012001",
+      bendaharaNama: "RATNA SARI, SE",
+      bendaharaNIP: "199301012015012001",
+      npwpDesa: "00.444.555.6-000.000",
+      tahunAnggaran: "2026",
+      alamatKantor: "Jl. Kesentosaan No. 23",
+      kodePos: "40004",
+    },
+  },
+  {
+    id: "desa-lestari",
+    profile: {
+      namaDesa: "LESTARI",
+      kecamatan: "KECAMATAN HIJAU",
+      kabupaten: "KABUPATEN BERSIH",
+      provinsi: "PROVINSI NUSANTARA",
+      kepalaDesaNama: "M. RIDWAN, S.Ag",
+      kepalaDesaNIP: "197101011995031001",
+      sekretarisNama: "YULIA RAHAYU, S.AP",
+      sekretarisNIP: "198601012009012001",
+      bendaharaNama: "ANDI FIRMANSYAH, SE",
+      bendaharaNIP: "199401012016011001",
+      npwpDesa: "00.555.666.7-000.000",
+      tahunAnggaran: "2026",
+      alamatKantor: "Jl. Kelestarian No. 78",
+      kodePos: "50005",
+    },
+  },
+];
