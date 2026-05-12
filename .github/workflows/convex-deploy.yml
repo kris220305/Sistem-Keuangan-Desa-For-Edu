@@ -35,4 +35,4 @@ jobs:
         run: npx convex deploy
       - name: Skip notice
         if: steps.convex.outputs.missing == 'true'
-        run: echo "Skipping Convex deploy: missing CONVEX_DEPLOYMENT/CONVEX_DEPLOY_KEY secrets."
+        run: echo "Skipping Convex deploy - missing CONVEX_DEPLOYMENT/CONVEX_DEPLOY_KEY secrets."
