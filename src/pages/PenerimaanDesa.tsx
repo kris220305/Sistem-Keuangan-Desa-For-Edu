@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useMemo } from "react";
+import { Fragment, useState, useEffect, useMemo, type TableHTMLAttributes } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { getSessionId, trackFormProgress } from "@/lib/session-manager";
 import { getRekeningDetail } from "@/data/rekening-data";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { loadMutasiKas, saveMutasiKasLocal } from "@/data/mutasi-kas";
 import { saveMutasiKasAndSync } from "@/lib/mutasi-kas-sync";
@@ -23,6 +23,12 @@ import bgSawah from "@/assets/bg-sawah-sunset.jpg";
 
 type Mode = "view" | "tambah" | "ubah";
 type ActiveTab = "silpa" | "tunai" | "bank";
+
+const cx = (...v: Array<string | false | null | undefined>) => v.filter(Boolean).join(" ");
+
+function RawTable({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
+  return <table className={cx("w-full caption-bottom text-sm", className)} {...props} />;
+}
 
 // ===================== SILPA TAB =====================
 function SilpaTab() {
@@ -151,13 +157,13 @@ function SilpaTab() {
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto">
-          <Table className="min-w-[760px]">
+          <RawTable className="min-w-[760px]">
             <TableHeader>
               <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
-                <TableHead className="text-xs font-semibold w-[120px]">Tanggal</TableHead>
-                <TableHead className="text-xs font-semibold w-[220px]">Nomor Bukti / Ref</TableHead>
-                <TableHead className="text-xs font-semibold">Uraian</TableHead>
-                <TableHead className="text-xs font-semibold text-center w-[110px]">Status</TableHead>
+                <TableHead className="h-10 px-3 text-[12px] font-semibold w-[120px]">Tanggal</TableHead>
+                <TableHead className="h-10 px-3 text-[12px] font-semibold w-[240px]">Nomor Bukti / Ref</TableHead>
+                <TableHead className="h-10 px-3 text-[12px] font-semibold">Uraian</TableHead>
+                <TableHead className="h-10 px-3 text-[12px] font-semibold text-center w-[110px]">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -171,12 +177,12 @@ function SilpaTab() {
                     className={`cursor-pointer transition-colors ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/60" : "bg-transparent")} hover:bg-[#f0fdf4]`}
                     onClick={() => { if (mode === "view") setSelectedId(item.id); }}
                   >
-                      <TableCell className="text-xs whitespace-nowrap">{item.tanggal}</TableCell>
-                      <TableCell className="text-xs font-mono whitespace-nowrap">{item.nomorBukti}</TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="px-3 py-2 text-[13px] whitespace-nowrap">{item.tanggal}</TableCell>
+                      <TableCell className="px-3 py-2 text-[13px] font-mono whitespace-nowrap">{item.nomorBukti}</TableCell>
+                      <TableCell className="px-3 py-2 text-[13px]">
                         <div className="truncate max-w-[240px] sm:max-w-[360px] md:max-w-[520px] lg:max-w-[720px]" title={item.uraian}>{item.uraian}</div>
                       </TableCell>
-                      <TableCell className="text-xs text-center">
+                      <TableCell className="px-3 py-2 text-[13px] text-center">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.isProses ? "bg-[#dcfce7] text-[#166534]" : "bg-[#fef9c3] text-[#854d0e]"}`}>
                           {item.isProses ? "Proses" : "Belum"}
                         </span>
@@ -185,7 +191,7 @@ function SilpaTab() {
                 );
               })}
             </TableBody>
-          </Table>
+          </RawTable>
         </div>
       </div>
 
@@ -247,14 +253,14 @@ function SilpaTab() {
               <TabsContent value="rincian" className="mt-3 flex-1 min-h-0 overflow-auto">
                 <div className="border border-[#d0d0d0] bg-white p-4 overflow-hidden">
                   <div className="text-[12px] font-semibold text-[#14532d] mb-3">Rincian SiLPA Tahun Sebelumnya</div>
-                  <div className="border border-[#d0d0d0] bg-white overflow-hidden max-h-56 overflow-auto">
-                    <Table className="min-w-[760px]">
+                  <div className="border border-[#d0d0d0] bg-white overflow-hidden max-h-[40vh] md:max-h-[46vh] overflow-auto">
+                    <RawTable className="min-w-[860px]">
                       <TableHeader>
                         <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
-                          <TableHead className="text-[11px] font-semibold">RincianSD</TableHead>
-                          <TableHead className="text-[11px] font-semibold">Nama Rincian</TableHead>
-                          <TableHead className="text-[11px] font-semibold text-right">Debet</TableHead>
-                          <TableHead className="text-[11px] font-semibold text-right">Kredit</TableHead>
+                          <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[180px]">RincianSD</TableHead>
+                          <TableHead className="h-10 px-3 text-[12px] font-semibold">Nama Rincian</TableHead>
+                          <TableHead className="h-10 px-3 text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">Debet</TableHead>
+                          <TableHead className="h-10 px-3 text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">Kredit</TableHead>
                           {mode !== "view" && <TableHead className="text-[11px] w-10"></TableHead>}
                         </TableRow>
                       </TableHeader>
@@ -263,10 +269,10 @@ function SilpaTab() {
                           <TableRow><TableCell colSpan={mode !== "view" ? 5 : 4} className="text-center text-muted-foreground py-6 text-xs">Belum ada rincian</TableCell></TableRow>
                         ) : displayRincian.map(r => (
                           <TableRow key={r.id} className="hover:bg-[#e8f2ff]">
-                            <TableCell className="text-[13px] font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
-                            <TableCell className="text-[13px]">{r.namaRekening}</TableCell>
-                            <TableCell className="text-[13px] text-right tabular-nums">{r.debet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-[13px] text-right tabular-nums">{r.kredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="px-3 py-2 text-[13px] font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
+                            <TableCell className="px-3 py-2 text-[13px]">{r.namaRekening}</TableCell>
+                            <TableCell className="px-3 py-2 text-[13px] text-right tabular-nums">{r.debet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="px-3 py-2 text-[13px] text-right tabular-nums">{r.kredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
                             {mode !== "view" && (
                               <TableCell>
                                 <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive text-[11px]" onClick={() => removeRincian(r.id)}>Hapus</Button>
@@ -275,13 +281,13 @@ function SilpaTab() {
                           </TableRow>
                         ))}
                         <TableRow className="bg-[#f4f4f4] font-bold">
-                          <TableCell colSpan={2} className="text-[13px] text-right">Total</TableCell>
-                          <TableCell className="text-[13px] text-right tabular-nums">{totalDebet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-[13px] text-right tabular-nums">{totalKredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell colSpan={2} className="px-3 py-2 text-[13px] text-right">Total</TableCell>
+                          <TableCell className="px-3 py-2 text-[13px] text-right tabular-nums">{totalDebet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="px-3 py-2 text-[13px] text-right tabular-nums">{totalKredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
                           {mode !== "view" && <TableCell />}
                         </TableRow>
                       </TableBody>
-                    </Table>
+                    </RawTable>
                   </div>
 
                   {mode !== "view" && (
@@ -624,14 +630,14 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
       <div className="flex-1 min-h-0 overflow-hidden p-3 grid grid-rows-[minmax(0,200px)_minmax(0,1fr)_auto] sm:grid-rows-[minmax(0,240px)_minmax(0,1fr)_auto] lg:grid-rows-[minmax(0,320px)_minmax(0,1fr)_auto] gap-3">
         <div className="min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col">
           <div className="flex-1 min-h-0 overflow-auto">
-            <Table className="min-w-[860px]">
+            <RawTable className="min-w-[860px]">
               <TableHeader>
                 <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
-                  <TableHead className="w-8"></TableHead>
-                  <TableHead className="text-[12px] font-semibold whitespace-nowrap w-[120px]">Tanggal</TableHead>
-                  <TableHead className="text-[12px] font-semibold whitespace-nowrap w-[240px]">No Bukti</TableHead>
-                  <TableHead className="text-[12px] font-semibold">Uraian</TableHead>
-                  <TableHead className="text-[12px] font-semibold text-right whitespace-nowrap w-[170px]">Jumlah</TableHead>
+                  <TableHead className="h-10 px-3 w-8"></TableHead>
+                  <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[120px]">Tanggal</TableHead>
+                  <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[240px]">No Bukti</TableHead>
+                  <TableHead className="h-10 px-3 text-[12px] font-semibold">Uraian</TableHead>
+                  <TableHead className="h-10 px-3 text-[12px] font-semibold text-right whitespace-nowrap w-[170px]">Jumlah</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -649,18 +655,18 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                       className={`cursor-pointer ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/70" : "bg-transparent")} hover:bg-[#f0fdf4]`}
                       onClick={() => { if (mode === "view") { setSelectedId(item.id); } }}
                     >
-                        <TableCell className="text-[13px] text-center font-mono">{active ? "▶" : ""}</TableCell>
-                        <TableCell className="text-[13px] whitespace-nowrap">{item.tanggal}</TableCell>
-                        <TableCell className="text-[13px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
-                        <TableCell className="text-[13px]">
+                        <TableCell className="px-3 py-2 text-[13px] text-center font-mono">{active ? "▶" : ""}</TableCell>
+                        <TableCell className="px-3 py-2 text-[13px] whitespace-nowrap">{item.tanggal}</TableCell>
+                        <TableCell className="px-3 py-2 text-[13px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
+                        <TableCell className="px-3 py-2 text-[13px]">
                           <div className="truncate max-w-[260px] sm:max-w-[380px] md:max-w-[560px] lg:max-w-[760px]" title={item.uraian}>{item.uraian}</div>
                         </TableCell>
-                        <TableCell className="text-[13px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
+                        <TableCell className="px-3 py-2 text-[13px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
                       </TableRow>
                   );
                 })}
               </TableBody>
-            </Table>
+            </RawTable>
           </div>
         </div>
 
@@ -859,7 +865,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
 
                     <div className="border border-[#d0d0d0] bg-white overflow-hidden">
                       <div className="max-h-[40vh] md:max-h-[46vh] overflow-auto">
-                        <Table className="min-w-[980px]">
+                        <RawTable className="min-w-[980px]">
                           <TableHeader>
                             <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
                               <TableHead className="w-10 text-[12px] font-semibold">#</TableHead>
@@ -922,7 +928,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                               </TableRow>
                             )}
                           </TableBody>
-                        </Table>
+                        </RawTable>
                       </div>
                     </div>
 
