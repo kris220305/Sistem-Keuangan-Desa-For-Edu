@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { loadMutasiKas, saveMutasiKasLocal } from "@/data/mutasi-kas";
 import { saveMutasiKasAndSync } from "@/lib/mutasi-kas-sync";
@@ -394,8 +395,10 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   const [allItems, setAllItems] = useState<PenerimaanItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("view");
-  const [detailTab, setDetailTab] = useState<"tbp" | "penyetor" | "bank" | "rincian">("tbp");
+  const [detailTab, setDetailTab] = useState<"input" | "rincian">("input");
   const [mobilePane, setMobilePane] = useState<"list" | "detail">("list");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewMutasiTunai, setPreviewMutasiTunai] = useState(false);
 
   const rekeningPendapatan = getRekeningDetail("pendapatan");
 
@@ -411,7 +414,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
 
   useEffect(() => {
     if (mode === "view") return;
-    setDetailTab("tbp");
+    setDetailTab("input");
   }, [mode]);
 
   useEffect(() => {
@@ -419,6 +422,10 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   }, [mode, selectedId]);
 
   const items = allItems.filter(i => i.jenis === jenis);
+  const lastTemplate = useMemo(() => {
+    for (let i = items.length - 1; i >= 0; i--) return items[i];
+    return undefined;
+  }, [items]);
 
   const save = (newAll: PenerimaanItem[]) => {
     setAllItems(newAll);
@@ -489,17 +496,23 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
     return () => window.clearTimeout(t);
   }, [draftKey, form, mode]);
 
-  const handleTambah = () => { setMode("tambah"); setSelectedId(null); setForm({ ...emptyForm }); setDetailTab("tbp"); };
+  const handleTambah = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    setMode("tambah");
+    setSelectedId(null);
+    setForm({ ...emptyForm, tanggal: today, noBukti: generateNoBukti() });
+    setDetailTab("input");
+  };
   const handleUbah = () => {
     if (!selectedItem) return toast.error("Pilih data yang akan diubah");
-    setMode("ubah"); setForm({ ...selectedItem }); setDetailTab("tbp");
+    setMode("ubah"); setForm({ ...selectedItem }); setDetailTab("input");
   };
   const handleHapus = () => {
     if (!selectedItem) return toast.error("Pilih data yang akan dihapus");
     if (!confirm("Yakin hapus data ini?")) return;
     save(allItems.filter(i => i.id !== selectedItem.id)); setSelectedId(null); toast.success("Data dihapus");
   };
-  const handleBatal = () => { clearDraft(); setMode("view"); setForm(emptyForm); setDetailTab("tbp"); setMobilePane("list"); };
+  const handleBatal = () => { clearDraft(); setMode("view"); setForm(emptyForm); setDetailTab("input"); setMobilePane("list"); };
 
   const handleSimpan = (opts?: { catatMutasiTunai?: boolean }) => {
     if (!form.tanggal) return toast.error("Isi tanggal");
@@ -557,7 +570,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
     setSelectedId(saved.id);
     toast.success(mode === "ubah" ? "Data diperbarui" : (catatMutasiTunai ? "Penerimaan dicatat ke mutasi tunai" : "Penerimaan ditambahkan"));
     clearDraft();
-    setMode("view"); setForm(emptyForm); setDetailTab("tbp");
+    setMode("view"); setForm(emptyForm); setDetailTab("input"); setMobilePane("list");
     trackFormProgress("penerimaan");
   };
 
@@ -608,14 +621,12 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   const fmt = (n: number) => (n || 0).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const steps = useMemo(() => {
-    const s: Array<{ id: "tbp" | "penyetor" | "bank" | "rincian"; label: string }> = [
-      { id: "tbp", label: "TBP" },
-      { id: "penyetor", label: "Penyetor" },
+    const s: Array<{ id: "input" | "rincian"; label: string }> = [
+      { id: "input", label: "Input" },
+      { id: "rincian", label: "Rincian" },
     ];
-    if (jenis === "bank") s.push({ id: "bank", label: "Bank" });
-    s.push({ id: "rincian", label: "Rincian" });
     return s;
-  }, [jenis]);
+  }, []);
   const progressValue = useMemo(() => {
     const idx = steps.findIndex((x) => x.id === detailTab);
     const safe = idx < 0 ? 0 : idx;
@@ -755,165 +766,227 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                   ))}
                 </TabsList>
 
-                <TabsContent value="tbp" className="mt-3 flex-1 min-h-0 overflow-auto">
+                <TabsContent value="input" className="mt-3 flex-1 min-h-0 overflow-auto">
                   <div className="border border-[#d0d0d0] bg-white p-4">
-                    <div className="text-[13px] font-semibold text-[#111827] mb-3">TBP</div>
-                    <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-x-3 gap-y-3 text-[13px] items-center">
-                      <Label>No Bukti</Label>
-                      {mode !== "view" ? (
-                        <Input
-                          value={form.noBukti}
-                          onChange={(e) => setForm({ ...form, noBukti: e.target.value })}
-                          placeholder={generateNoBukti()}
-                          className="h-10 text-[13px] rounded-none"
-                        />
-                      ) : (
-                        <Input value={selectedItem?.noBukti || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
-                      )}
-
-                      <Label className={`${invalid("tanggal") ? "text-destructive" : ""}`}>Tgl Bukti</Label>
-                      {mode !== "view" ? (
-                        <Input
-                          type="date"
-                          value={form.tanggal}
-                          onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
-                          className={`h-10 text-[13px] rounded-none ${invalid("tanggal") ? "border-destructive" : ""}`}
-                        />
-                      ) : (
-                        <Input value={selectedItem?.tanggal || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
-                      )}
-
-                      <Label className={`${invalid("uraian") ? "text-destructive" : ""}`}>Uraian</Label>
-                      {mode !== "view" ? (
-                        <Input
-                          value={form.uraian}
-                          onChange={(e) => setForm({ ...form, uraian: e.target.value })}
-                          className={`h-10 text-[13px] rounded-none ${invalid("uraian") ? "border-destructive" : ""}`}
-                        />
-                      ) : (
-                        <Input value={selectedItem?.uraian || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
-                      )}
-
-                      <Label className={`${invalid("jumlah") ? "text-destructive" : ""}`}>Jumlah</Label>
-                      {mode !== "view" ? (
-                        <Input
-                          type="number"
-                          value={form.rincian.length > 0 ? calcJumlah : (form.jumlah || "")}
-                          onChange={(e) => setForm({ ...form, jumlah: Number(e.target.value) })}
-                          disabled={form.rincian.length > 0}
-                          className={`h-10 text-[13px] text-right tabular-nums rounded-none ${invalid("jumlah") ? "border-destructive" : ""}`}
-                        />
-                      ) : (
-                        <Input value={fmt(selectedItem?.jumlah || 0)} readOnly className="h-10 text-[13px] bg-[#f2f2f2] text-right tabular-nums rounded-none" />
-                      )}
-
-                      <Label>Terbilang</Label>
-                      <Input value={terbilang} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
-                    </div>
-                    {Object.keys(errors).length > 0 && mode !== "view" && (
-                      <div className="mt-3 rounded-lg border border-[#ffd3d3] bg-[#fff1f1] p-3 text-[11px] text-destructive">
-                        {Object.values(errors).map((v, idx) => <div key={idx}>{v}</div>)}
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <div className="text-[13px] font-semibold text-[#111827]">Input</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Preview: <span className="font-mono">{mode !== "view" ? (form.noBukti || generateNoBukti()) : (selectedItem?.noBukti || "—")}</span>
                       </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent forceMount value="penyetor" className="mt-3 flex-1 min-h-0 overflow-auto">
-                  <div className="border border-[#d0d0d0] bg-white p-4">
-                    <div className="text-[13px] font-semibold text-[#111827] mb-3">Penyetor</div>
-                    <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-x-3 gap-y-3 items-center text-[13px]">
-                      <Label className={`${invalid("nama") ? "text-destructive" : ""}`}>Nama</Label>
-                      {mode !== "view" ? (
-                        <>
-                          <div className="space-y-1">
-                            <Input
-                              list="penerimaan-nama"
-                              value={form.nama}
-                              onChange={(e) => setForm({ ...form, nama: e.target.value })}
-                              className={`h-10 text-[13px] rounded-none ${invalid("nama") ? "border-destructive" : ""}`}
-                            />
-                            {invalid("nama") && <div className="text-[11px] text-destructive">Wajib diisi</div>}
-                          </div>
-                          <datalist id="penerimaan-nama">{namaSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
-                        </>
-                      ) : (
-                        <Input value={selectedItem?.nama || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
-                      )}
-
-                      <Label>Alamat</Label>
-                      {mode !== "view" ? (
-                        <>
-                          <Input list="penerimaan-alamat" value={form.alamat} onChange={(e) => setForm({ ...form, alamat: e.target.value })} className="h-10 text-[13px] rounded-none" />
-                          <datalist id="penerimaan-alamat">{alamatSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
-                        </>
-                      ) : (
-                        <Input value={selectedItem?.alamat || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
-                      )}
-
-                      <Label>Ttd</Label>
-                      {mode !== "view" ? (
-                        <>
-                          <Input list="penerimaan-ttd" value={form.ttd} onChange={(e) => setForm({ ...form, ttd: e.target.value })} className="h-10 text-[13px] rounded-none" />
-                          <datalist id="penerimaan-ttd">{ttdSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
-                        </>
-                      ) : (
-                        <Input value={selectedItem?.ttd || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
-                      )}
                     </div>
-                  </div>
-                </TabsContent>
 
-                {jenis === "bank" && (
-                  <TabsContent forceMount value="bank" className="mt-3 flex-1 min-h-0 overflow-auto">
-                    <div className="border border-[#d0d0d0] bg-white p-4">
-                      <div className="text-[13px] font-semibold text-[#111827] mb-3">Bank Penerima</div>
-                      <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-x-3 gap-y-3 items-center text-[13px]">
-                        <Label>KPPN</Label>
-                        {mode !== "view" ? (
-                          <>
-                            <Input list="penerimaan-kppn" value={form.kppn || ""} onChange={(e) => setForm({ ...form, kppn: e.target.value })} className="h-10 text-[13px] rounded-none" />
-                            <datalist id="penerimaan-kppn">{kppnSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
-                          </>
-                        ) : (
-                          <Input value={selectedItem?.kppn || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div className="border border-[#d0d0d0] bg-white p-3">
+                        <div className="text-[12px] font-semibold text-[#14532d] mb-3">TBP</div>
+                        <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-x-3 gap-y-3 text-[13px] items-center">
+                          <Label>No Bukti</Label>
+                          {mode !== "view" ? (
+                            <Input
+                              value={form.noBukti}
+                              onChange={(e) => setForm({ ...form, noBukti: e.target.value })}
+                              placeholder={generateNoBukti()}
+                              className="h-10 text-[13px] rounded-none"
+                            />
+                          ) : (
+                            <Input value={selectedItem?.noBukti || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                          )}
+
+                          <Label className={`${invalid("tanggal") ? "text-destructive" : ""}`}>Tgl Bukti</Label>
+                          {mode !== "view" ? (
+                            <Input
+                              type="date"
+                              value={form.tanggal}
+                              onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
+                              className={`h-10 text-[13px] rounded-none ${invalid("tanggal") ? "border-destructive" : ""}`}
+                            />
+                          ) : (
+                            <Input value={selectedItem?.tanggal || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                          )}
+
+                          <Label className={`${invalid("uraian") ? "text-destructive" : ""}`}>Uraian</Label>
+                          {mode !== "view" ? (
+                            <Input
+                              value={form.uraian}
+                              onChange={(e) => setForm({ ...form, uraian: e.target.value })}
+                              className={`h-10 text-[13px] rounded-none ${invalid("uraian") ? "border-destructive" : ""}`}
+                            />
+                          ) : (
+                            <Input value={selectedItem?.uraian || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                          )}
+
+                          <Label className={`${invalid("jumlah") ? "text-destructive" : ""}`}>Jumlah</Label>
+                          {mode !== "view" ? (
+                            <Input
+                              type="number"
+                              value={form.rincian.length > 0 ? calcJumlah : (form.jumlah || "")}
+                              onChange={(e) => setForm({ ...form, jumlah: Number(e.target.value) })}
+                              disabled={form.rincian.length > 0}
+                              className={`h-10 text-[13px] text-right tabular-nums rounded-none ${invalid("jumlah") ? "border-destructive" : ""}`}
+                            />
+                          ) : (
+                            <Input value={fmt(selectedItem?.jumlah || 0)} readOnly className="h-10 text-[13px] bg-[#f2f2f2] text-right tabular-nums rounded-none" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="border border-[#d0d0d0] bg-white p-3">
+                        <div className="text-[12px] font-semibold text-[#14532d] mb-3">Penyetor & Bank</div>
+                        {mode !== "view" && lastTemplate && (
+                          <div className="mb-3 flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-9 text-[12px] rounded-none"
+                              onClick={() => {
+                                setForm((f) => ({
+                                  ...f,
+                                  nama: f.nama || lastTemplate.nama || "",
+                                  alamat: f.alamat || lastTemplate.alamat || "",
+                                  ttd: f.ttd || lastTemplate.ttd || "",
+                                }));
+                              }}
+                            >
+                              Quick-fill Penyetor
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-9 text-[12px] rounded-none"
+                              onClick={() => {
+                                setForm((f) => ({ ...f, uraian: f.uraian || lastTemplate.uraian || "" }));
+                              }}
+                            >
+                              Quick-fill Uraian
+                            </Button>
+                            {jenis === "bank" && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-9 text-[12px] rounded-none"
+                                onClick={() => {
+                                  setForm((f) => ({
+                                    ...f,
+                                    rekening: f.rekening || lastTemplate.rekening || "",
+                                    namaBank: f.namaBank || lastTemplate.namaBank || "",
+                                    kppn: f.kppn || lastTemplate.kppn || "",
+                                  }));
+                                }}
+                              >
+                                Quick-fill Bank
+                              </Button>
+                            )}
+                          </div>
                         )}
-
-                        <Label className={`${invalid("rekening") ? "text-destructive" : ""}`}>Rekening</Label>
-                        {mode !== "view" ? (
-                          <div className="flex gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-x-3 gap-y-3 text-[13px] items-center">
+                          <Label className={`${invalid("nama") ? "text-destructive" : ""}`}>Nama</Label>
+                          {mode !== "view" ? (
                             <>
-                              <Input
-                                list="penerimaan-rekening"
-                                value={form.rekening || ""}
-                                onChange={(e) => setForm({ ...form, rekening: e.target.value })}
-                                className={`h-10 text-[13px] rounded-none ${invalid("rekening") ? "border-destructive" : ""}`}
-                              />
-                              <datalist id="penerimaan-rekening">{rekeningSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
+                              <div className="space-y-1">
+                                <Input
+                                  list="penerimaan-nama"
+                                  value={form.nama}
+                                  onChange={(e) => setForm({ ...form, nama: e.target.value })}
+                                  className={`h-10 text-[13px] rounded-none ${invalid("nama") ? "border-destructive" : ""}`}
+                                />
+                                {invalid("nama") && <div className="text-[11px] text-destructive">Wajib diisi</div>}
+                              </div>
+                              <datalist id="penerimaan-nama">{namaSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
                             </>
-                            <Button type="button" variant="outline" className="h-10 px-3 text-[13px] rounded-none" onClick={() => {}}>...</Button>
-                          </div>
-                        ) : (
-                          <Input value={selectedItem?.rekening || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
-                        )}
+                          ) : (
+                            <Input value={selectedItem?.nama || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                          )}
 
-                        <Label className={`${invalid("namaBank") ? "text-destructive" : ""}`}>Nama Bank</Label>
-                        {mode !== "view" ? (
-                          <>
-                            <Input
-                              list="penerimaan-namaBank"
-                              value={form.namaBank || ""}
-                              onChange={(e) => setForm({ ...form, namaBank: e.target.value })}
-                              className={`h-10 text-[13px] rounded-none ${invalid("namaBank") ? "border-destructive" : ""}`}
-                            />
-                            <datalist id="penerimaan-namaBank">{namaBankSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
-                          </>
-                        ) : (
-                          <Input value={selectedItem?.namaBank || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
-                        )}
+                          <Label>Alamat</Label>
+                          {mode !== "view" ? (
+                            <>
+                              <Input list="penerimaan-alamat" value={form.alamat} onChange={(e) => setForm({ ...form, alamat: e.target.value })} className="h-10 text-[13px] rounded-none" />
+                              <datalist id="penerimaan-alamat">{alamatSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
+                            </>
+                          ) : (
+                            <Input value={selectedItem?.alamat || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                          )}
+
+                          <Label>Ttd</Label>
+                          {mode !== "view" ? (
+                            <>
+                              <Input list="penerimaan-ttd" value={form.ttd} onChange={(e) => setForm({ ...form, ttd: e.target.value })} className="h-10 text-[13px] rounded-none" />
+                              <datalist id="penerimaan-ttd">{ttdSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
+                            </>
+                          ) : (
+                            <Input value={selectedItem?.ttd || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                          )}
+
+                          {jenis === "bank" && (
+                            <>
+                              <Label>KPPN</Label>
+                              {mode !== "view" ? (
+                                <>
+                                  <Input list="penerimaan-kppn" value={form.kppn || ""} onChange={(e) => setForm({ ...form, kppn: e.target.value })} className="h-10 text-[13px] rounded-none" />
+                                  <datalist id="penerimaan-kppn">{kppnSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
+                                </>
+                              ) : (
+                                <Input value={selectedItem?.kppn || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                              )}
+
+                              <Label className={`${invalid("rekening") ? "text-destructive" : ""}`}>Rekening</Label>
+                              {mode !== "view" ? (
+                                <>
+                                  <Input
+                                    list="penerimaan-rekening"
+                                    value={form.rekening || ""}
+                                    onChange={(e) => setForm({ ...form, rekening: e.target.value })}
+                                    className={`h-10 text-[13px] rounded-none ${invalid("rekening") ? "border-destructive" : ""}`}
+                                  />
+                                  <datalist id="penerimaan-rekening">{rekeningSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
+                                </>
+                              ) : (
+                                <Input value={selectedItem?.rekening || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                              )}
+
+                              <Label className={`${invalid("namaBank") ? "text-destructive" : ""}`}>Nama Bank</Label>
+                              {mode !== "view" ? (
+                                <>
+                                  <Input
+                                    list="penerimaan-namaBank"
+                                    value={form.namaBank || ""}
+                                    onChange={(e) => setForm({ ...form, namaBank: e.target.value })}
+                                    className={`h-10 text-[13px] rounded-none ${invalid("namaBank") ? "border-destructive" : ""}`}
+                                  />
+                                  <datalist id="penerimaan-namaBank">{namaBankSuggestions.map((x) => <option key={x} value={x} />)}</datalist>
+                                </>
+                              ) : (
+                                <Input value={selectedItem?.namaBank || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </TabsContent>
-                )}
+
+                    <div className="mt-4 border border-[#d0d0d0] bg-[#f8fafc] p-3">
+                      <div className="text-[12px] font-semibold text-[#111827] mb-2">Preview</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-[12px] text-[#111827]">
+                        <div>No Bukti: <span className="font-mono">{mode !== "view" ? (form.noBukti || generateNoBukti()) : (selectedItem?.noBukti || "—")}</span></div>
+                        <div>Tanggal: <span className="font-mono">{(mode !== "view" ? form.tanggal : selectedItem?.tanggal) || "—"}</span></div>
+                        <div>Uraian: <span className="font-mono">{(mode !== "view" ? form.uraian : selectedItem?.uraian) || "—"}</span></div>
+                        <div>Jumlah: <span className="font-mono">Rp {fmt(mode !== "view" ? calcJumlah : (selectedItem?.jumlah || 0))}</span></div>
+                        <div>Penyetor: <span className="font-mono">{(mode !== "view" ? form.nama : selectedItem?.nama) || "—"}</span></div>
+                        {jenis === "bank" && (
+                          <div>Bank: <span className="font-mono">{(mode !== "view" ? form.namaBank : selectedItem?.namaBank) || "—"}</span></div>
+                        )}
+                      </div>
+                      <div className="mt-2 text-[11px] text-muted-foreground">Terbilang: {terbilang}</div>
+                      {Object.keys(errors).length > 0 && mode !== "view" && (
+                        <div className="mt-3 rounded-lg border border-[#ffd3d3] bg-[#fff1f1] p-3 text-[11px] text-destructive">
+                          {Object.values(errors).map((v, idx) => <div key={idx}>{v}</div>)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
 
                 <TabsContent value="rincian" className="mt-3 flex-1 min-h-0 overflow-auto">
                   <div className="space-y-4">
@@ -1106,16 +1179,32 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
         </Button>
         {jenis === "tunai" ? (
           <>
-            <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: true })} disabled={mode === "view"}>
-              <Save className="h-4 w-4 mr-2" /> Simpan + Mutasi
+            <Button
+              size="sm"
+              className="h-9 text-[12px] rounded-none"
+              onClick={() => { setPreviewMutasiTunai(true); setPreviewOpen(true); }}
+              disabled={mode === "view"}
+            >
+              <Save className="h-4 w-4 mr-2" /> Preview + Mutasi
             </Button>
-            <Button size="sm" variant="secondary" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
-              <Save className="h-4 w-4 mr-2" /> Simpan
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-9 text-[12px] rounded-none"
+              onClick={() => { setPreviewMutasiTunai(false); setPreviewOpen(true); }}
+              disabled={mode === "view"}
+            >
+              <Save className="h-4 w-4 mr-2" /> Preview Simpan
             </Button>
           </>
         ) : (
-          <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={() => handleSimpan({ catatMutasiTunai: false })} disabled={mode === "view"}>
-            <Save className="h-4 w-4 mr-2" /> Simpan
+          <Button
+            size="sm"
+            className="h-9 text-[12px] rounded-none"
+            onClick={() => { setPreviewMutasiTunai(false); setPreviewOpen(true); }}
+            disabled={mode === "view"}
+          >
+            <Save className="h-4 w-4 mr-2" /> Preview Simpan
           </Button>
         )}
         <div className="flex-1" />
@@ -1123,6 +1212,90 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           <DoorOpen className="h-4 w-4 mr-2" /> Tutup
         </Button>
       </div>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[16px]">Preview Penerimaan</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="border border-[#d0d0d0] bg-white p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+                <div>No Bukti: <span className="font-mono">{form.noBukti || generateNoBukti()}</span></div>
+                <div>Tanggal: <span className="font-mono">{form.tanggal || "—"}</span></div>
+                <div className="md:col-span-2">Uraian: <span className="font-mono">{form.uraian || "—"}</span></div>
+                <div>Jumlah: <span className="font-mono">Rp {fmt(calcJumlah)}</span></div>
+                <div>Penyetor: <span className="font-mono">{form.nama || "—"}</span></div>
+                {jenis === "bank" && (
+                  <>
+                    <div>Rekening: <span className="font-mono">{form.rekening || "—"}</span></div>
+                    <div>Nama Bank: <span className="font-mono">{form.namaBank || "—"}</span></div>
+                    <div>KPPN: <span className="font-mono">{form.kppn || "—"}</span></div>
+                  </>
+                )}
+                <div className="md:col-span-2 text-[12px] text-muted-foreground">Terbilang: {terbilang}</div>
+              </div>
+            </div>
+
+            <div className="border border-[#d0d0d0] bg-white p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-[13px] font-semibold text-[#111827]">Rincian</div>
+                <div className="text-[12px] text-muted-foreground">{displayRincian.length} baris</div>
+              </div>
+              {displayRincian.length > 0 ? (
+                <div className="mt-3 max-h-[40vh] overflow-auto border border-[#d0d0d0]">
+                  <RawTable className="min-w-[980px]">
+                    <TableHeader>
+                      <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
+                        <TableHead className="h-10 px-3 w-10 text-[12px] font-semibold">#</TableHead>
+                        <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[160px]">Kd Rincian</TableHead>
+                        <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[120px]">Sumber</TableHead>
+                        <TableHead className="h-10 px-3 text-[12px] font-semibold">Nama Rekening</TableHead>
+                        <TableHead className="h-10 px-3 text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">Nilai</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {displayRincian.map((r, idx) => (
+                        <TableRow key={r.id} className={`${idx % 2 ? "bg-white/70" : "bg-transparent"}`}>
+                          <TableCell className="px-3 py-2 text-[13px] text-muted-foreground">{idx + 1}</TableCell>
+                          <TableCell className="px-3 py-2 text-[13px] font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
+                          <TableCell className="px-3 py-2 text-[13px] whitespace-nowrap">{r.sumberDana || rincianInfo.get(r.kodeRekening)?.sumberDana || "—"}</TableCell>
+                          <TableCell className="px-3 py-2 text-[13px]">
+                            <div className="truncate max-w-[560px]" title={r.namaRekening}>{r.namaRekening}</div>
+                          </TableCell>
+                          <TableCell className="px-3 py-2 text-[13px] text-right whitespace-nowrap tabular-nums">{fmt(r.nilai)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </RawTable>
+                </div>
+              ) : (
+                <div className="mt-3 text-[12px] text-muted-foreground">Belum ada rincian.</div>
+              )}
+            </div>
+
+            {Object.keys(errors).length > 0 && (
+              <div className="rounded-lg border border-[#ffd3d3] bg-[#fff1f1] p-3 text-[12px] text-destructive">
+                {Object.values(errors).map((v, idx) => <div key={idx}>{v}</div>)}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>Kembali</Button>
+            <Button
+              onClick={() => {
+                setPreviewOpen(false);
+                handleSimpan({ catatMutasiTunai: previewMutasiTunai });
+              }}
+              disabled={mode === "view" || Object.keys(errors).length > 0}
+            >
+              Konfirmasi Simpan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

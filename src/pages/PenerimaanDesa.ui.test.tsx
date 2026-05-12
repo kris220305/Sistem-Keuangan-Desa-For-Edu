@@ -89,9 +89,6 @@ describe("PenerimaanDesa – tampilan detail mengikuti baris yang dipilih", () =
     expect(screen.getByText("REALISASI PENERIMAAN TUNAI")).toBeInTheDocument();
     fireEvent.click(screen.getByText("0001/TBP/05.2001/2024"));
     expect(screen.getByDisplayValue("0001/TBP/05.2001/2024")).toBeInTheDocument();
-    const tabPenyetor = screen.getByRole("tab", { name: "Penyetor" });
-    fireEvent.pointerDown(tabPenyetor);
-    fireEvent.click(tabPenyetor);
     expect(screen.getByDisplayValue("Andi")).toBeInTheDocument();
   });
 
@@ -104,9 +101,6 @@ describe("PenerimaanDesa – tampilan detail mengikuti baris yang dipilih", () =
     fireEvent.click(screen.getByRole("button", { name: "Penerimaan Bank" }));
     expect(screen.getByText("REALISASI PENERIMAAN BANK")).toBeInTheDocument();
     fireEvent.click(screen.getByText("0002/TBP/05.2001/2024"));
-    const tabBank = screen.getByRole("tab", { name: "Bank" });
-    fireEvent.pointerDown(tabBank);
-    fireEvent.click(tabBank);
     expect(screen.getByDisplayValue("1234567890")).toBeInTheDocument();
     expect(screen.getByDisplayValue("BRI")).toBeInTheDocument();
   });
