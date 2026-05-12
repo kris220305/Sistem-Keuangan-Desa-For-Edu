@@ -211,7 +211,7 @@ function SilpaTab() {
           </div>
 
           {(selectedItem || mode !== "view") ? (
-            <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full flex flex-col">
+            <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full min-h-0 flex flex-col">
               <TabsList className="bg-[#f4f4f4] border border-[#d0d0d0] rounded-none p-1 h-10 justify-start overflow-x-auto">
                 <TabsTrigger value="data" className="text-[13px]">Data</TabsTrigger>
                 <TabsTrigger value="rincian" className="text-[13px]">Rincian</TabsTrigger>
@@ -679,7 +679,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                 <div className="text-[11px] text-muted-foreground">{Math.round(progressValue)}%</div>
               </div>
 
-              <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full flex flex-col">
+              <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full min-h-0 flex flex-col">
                 <TabsList className="bg-[#f4f4f4] border border-[#d0d0d0] rounded-none p-1 h-10 justify-start overflow-x-auto">
                   {steps.map((s) => (
                     <TabsTrigger key={s.id} value={s.id} className="text-[13px]">

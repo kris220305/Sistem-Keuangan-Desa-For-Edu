@@ -8,6 +8,12 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: convex-deploy
+      cancel-in-progress: true
+    env:
+      CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,7 +21,18 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-      - run: npx convex deploy
-        env:
-          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
-          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+      - name: Check Convex secrets
+        id: convex
+        shell: bash
+        run: |
+          if [[ -z "${CONVEX_DEPLOYMENT}" || -z "${CONVEX_DEPLOY_KEY}" ]]; then
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Deploy Convex (skip if secrets missing)
+        if: steps.convex.outputs.missing == 'false'
+        run: npx convex deploy
+      - name: Skip notice
+        if: steps.convex.outputs.missing == 'true'
+        run: echo "Skipping Convex deploy: missing CONVEX_DEPLOYMENT/CONVEX_DEPLOY_KEY secrets."
