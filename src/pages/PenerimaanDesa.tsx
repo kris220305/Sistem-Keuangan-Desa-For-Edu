@@ -17,10 +17,9 @@ import { appendMutasiKasAudit } from "@/data/mutasi-kas-audit";
 import { applyAutoMutasiForPenerimaanTunai } from "@/lib/penerimaan-tunai-mutasi";
 import { Combobox } from "@/components/ui/combobox";
 import { terbilangRupiah } from "@/lib/terbilang-id";
-import { Banknote, Landmark, Layers, Printer, Plus, Pencil, Trash2, X, Save, DoorOpen, List } from "lucide-react";
+import { Banknote, Landmark, Layers, Printer, Plus, Pencil, Trash2, X, Save, DoorOpen, List, FileText, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import bgSawah from "@/assets/bg-sawah-sunset.jpg";
 
 type Mode = "view" | "tambah" | "ubah";
 type ActiveTab = "silpa" | "tunai" | "bank";
@@ -146,22 +145,22 @@ function SilpaTab() {
   };
 
   const displayRincian = mode !== "view" ? form.rincian : (selectedItem?.rincian || []);
-  const progressValue = detailTab === "data" ? 50 : 100;
+  const progressValue = detailTab === "data" ? 60 : 100;
 
   return (
-    <div className="h-full min-h-0 flex flex-col border border-[#8e8e8e] bg-[#efefef] overflow-hidden">
-      <div className="bg-gradient-to-b from-[#0b8a1f] to-[#c7f3c7] border-b border-[#8e8e8e]">
-        <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">REALISASI SILPA TAHUN SEBELUMNYA</div>
+    <div className="h-full min-h-0 flex flex-col overflow-hidden rounded-xl border border-[hsl(152,25%,78%)] bg-[hsl(152,25%,98%)]">
+      <div className="bg-gradient-to-b from-[hsl(152,55%,30%)] to-[hsl(152,48%,22%)]">
+        <div className="py-2 text-center text-[13px] font-bold tracking-wide text-white">REALISASI SILPA TAHUN SEBELUMNYA</div>
       </div>
 
       <div className="px-3 pt-3 lg:hidden">
-        <div className="inline-flex border border-[#c8c8c8] bg-white/70">
+        <div className="inline-flex overflow-hidden rounded-lg border border-[hsl(152,25%,78%)] bg-white">
           <button
             type="button"
             onClick={() => setMobilePane("list")}
             className={cx(
-              "px-3 h-9 text-[13px] border-r border-[#c8c8c8] flex items-center gap-2",
-              mobilePane === "list" ? "bg-[#0b74d1] text-white" : "bg-transparent text-[#1f2937]",
+              "flex h-9 items-center gap-2 border-r border-[hsl(152,25%,78%)] px-3 text-[13px]",
+              mobilePane === "list" ? "bg-[hsl(152,55%,30%)] text-white" : "bg-transparent text-[#1f2937]",
             )}
           >
             <List className="h-4 w-4" />
@@ -171,8 +170,8 @@ function SilpaTab() {
             type="button"
             onClick={() => setMobilePane("detail")}
             className={cx(
-              "px-3 h-9 text-[13px] flex items-center gap-2",
-              mobilePane === "detail" ? "bg-[#0b74d1] text-white" : "bg-transparent text-[#1f2937]",
+              "flex h-9 items-center gap-2 px-3 text-[13px]",
+              mobilePane === "detail" ? "bg-[hsl(152,55%,30%)] text-white" : "bg-transparent text-[#1f2937]",
             )}
           >
             Detail
@@ -181,42 +180,62 @@ function SilpaTab() {
       </div>
 
       <div className="flex-1 min-h-0 grid gap-3 p-3 lg:grid-cols-2">
-      <div className={cx("min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col", mobilePane === "list" ? "flex" : "hidden", "lg:flex")}>
-        <div className="px-3 py-2 flex items-center justify-between bg-[#f4f4f4] border-b border-[#d0d0d0] text-[#111827]">
-          <div className="text-[12px] font-semibold">Daftar SiLPA</div>
-          <div className="text-[11px] text-muted-foreground">{items.length} data</div>
+      <div className={cx("min-h-0 overflow-hidden rounded-xl border border-[hsl(152,25%,78%)] bg-white flex flex-col", mobilePane === "list" ? "flex" : "hidden", "lg:flex")}>
+        <div className="flex items-center justify-between border-b border-[hsl(152,25%,85%)] bg-[hsl(152,25%,97%)] px-4 py-3 text-[#111827]">
+          <div className="text-[13px] font-semibold">Daftar SiLPA</div>
+          <div className="rounded-full bg-[hsl(152,30%,92%)] px-2.5 py-1 text-[11px] font-semibold text-[hsl(152,55%,22%)]">
+            {items.length} data
+          </div>
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto">
           <RawTable className="min-w-[760px]">
             <TableHeader>
-              <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
-                <TableHead className="h-10 px-3 text-[12px] font-semibold w-[120px]">Tanggal</TableHead>
-                <TableHead className="h-10 px-3 text-[12px] font-semibold w-[240px]">Nomor Bukti / Ref</TableHead>
-                <TableHead className="h-10 px-3 text-[12px] font-semibold">Uraian</TableHead>
-                <TableHead className="h-10 px-3 text-[12px] font-semibold text-center w-[110px]">Status</TableHead>
+              <TableRow className="bg-[hsl(152,25%,97%)] sticky top-0 z-10">
+                <TableHead className="h-10 px-4 text-[12px] font-semibold w-[120px]">TANGGAL</TableHead>
+                <TableHead className="h-10 px-4 text-[12px] font-semibold w-[240px]">NOMOR BUKTI / REF</TableHead>
+                <TableHead className="h-10 px-4 text-[12px] font-semibold">URAIAN</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8 text-sm">Belum ada data SiLPA</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={3} className="py-10">
+                    <div className="mx-auto max-w-sm rounded-xl border border-dashed border-[hsl(152,30%,80%)] bg-[hsl(152,25%,98%)] p-6 text-center">
+                      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(152,35%,92%)] text-[hsl(152,55%,22%)]">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="text-[13px] font-semibold text-[#111827]">Belum ada data</div>
+                      <div className="mt-1 text-[12px] text-muted-foreground">Klik Tambah untuk memulai.</div>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : items.map((item, idx) => {
                 const active = selectedId === item.id;
                 return (
                   <TableRow
                     key={item.id}
-                    className={`cursor-pointer transition-colors ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/60" : "bg-transparent")} hover:bg-[#f0fdf4]`}
-                    onClick={() => { if (mode === "view") setSelectedId(item.id); }}
+                    className={cx(
+                      "cursor-pointer transition-colors",
+                      active ? "bg-[hsl(152,55%,92%)]" : (idx % 2 ? "bg-white" : "bg-transparent"),
+                      "hover:bg-[hsl(152,35%,96%)]",
+                    )}
+                    onClick={() => {
+                      if (mode === "view") setSelectedId(item.id);
+                    }}
                   >
-                      <TableCell className="px-3 py-2 text-[13px] whitespace-nowrap">{item.tanggal}</TableCell>
-                      <TableCell className="px-3 py-2 text-[13px] font-mono whitespace-nowrap">{item.nomorBukti}</TableCell>
-                      <TableCell className="px-3 py-2 text-[13px]">
-                        <div className="truncate max-w-[240px] sm:max-w-[360px] md:max-w-[520px] lg:max-w-[720px]" title={item.uraian}>{item.uraian}</div>
-                      </TableCell>
-                      <TableCell className="px-3 py-2 text-[13px] text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.isProses ? "bg-[#dcfce7] text-[#166534]" : "bg-[#fef9c3] text-[#854d0e]"}`}>
-                          {item.isProses ? "Proses" : "Belum"}
-                        </span>
+                      <TableCell className="px-4 py-2 text-[13px] whitespace-nowrap text-[#111827]">{item.tanggal}</TableCell>
+                      <TableCell className="px-4 py-2 text-[13px] font-mono whitespace-nowrap text-[#111827]">{item.nomorBukti}</TableCell>
+                      <TableCell className="px-4 py-2 text-[13px]">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="truncate max-w-[260px] sm:max-w-[380px] md:max-w-[560px] lg:max-w-[760px]" title={item.uraian}>{item.uraian}</div>
+                          <span className={cx(
+                            "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                            item.isProses ? "bg-[hsl(152,55%,30%)] text-white" : "bg-[hsl(152,25%,92%)] text-[hsl(152,55%,22%)]",
+                          )}>
+                            {item.isProses ? "Proses" : "Belum"}
+                          </span>
+                        </div>
                       </TableCell>
                     </TableRow>
                 );
@@ -226,16 +245,37 @@ function SilpaTab() {
         </div>
       </div>
 
-      <div className={cx("flex-1 min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col", mobilePane === "detail" ? "flex" : "hidden", "lg:flex")}>
-        <div className="px-3 py-2 flex items-center justify-between border-b border-[#d0d0d0] bg-[#f4f4f4]">
-          <div className="text-[12px] font-semibold text-[#111827]">Detail</div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleProses} disabled={mode !== "view" || !selectedItem}>
-              Proses
-            </Button>
-            <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleUnProses} disabled={mode !== "view" || !selectedItem}>
-              UnProses
-            </Button>
+      <div className={cx("flex-1 min-h-0 overflow-hidden rounded-xl border border-[hsl(152,25%,78%)] bg-white flex flex-col", mobilePane === "detail" ? "flex" : "hidden", "lg:flex")}>
+        <div className="border-b border-[hsl(152,25%,85%)] bg-[hsl(152,25%,97%)] px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-[12px] text-muted-foreground">Auto-save aktif</div>
+            <div className="flex items-center gap-2">
+              <div className="hidden md:block w-56">
+                <Progress value={progressValue} className="h-2 bg-[hsl(152,25%,90%)]" />
+              </div>
+              <div className="text-[11px] text-muted-foreground">{Math.round(progressValue)}%</div>
+            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex overflow-hidden rounded-lg border border-[hsl(152,25%,78%)] bg-white">
+              <button type="button" className="h-8 px-3 text-[12px] font-semibold bg-[hsl(152,55%,30%)] text-white">Detail</button>
+              <button
+                type="button"
+                className={cx("h-8 px-3 text-[12px]", (mode !== "view" || !selectedItem) && "opacity-50")}
+                onClick={handleProses}
+                disabled={mode !== "view" || !selectedItem}
+              >
+                Proses
+              </button>
+              <button
+                type="button"
+                className={cx("h-8 px-3 text-[12px] border-l border-[hsl(152,25%,78%)]", (mode !== "view" || !selectedItem) && "opacity-50")}
+                onClick={handleUnProses}
+                disabled={mode !== "view" || !selectedItem}
+              >
+                UnProses
+              </button>
+            </div>
           </div>
         </div>
 
@@ -249,45 +289,133 @@ function SilpaTab() {
 
           {(selectedItem || mode !== "view") ? (
             <Tabs value={detailTab} onValueChange={(v) => setDetailTab(v as any)} className="h-full min-h-0 flex flex-col">
-              <TabsList className="bg-[#f4f4f4] border border-[#d0d0d0] rounded-none p-1 h-10 justify-start overflow-x-auto">
-                <TabsTrigger value="data" className="text-[13px]">Data</TabsTrigger>
-                <TabsTrigger value="rincian" className="text-[13px]">Rincian</TabsTrigger>
+              <TabsList className="h-10 justify-start gap-3 bg-transparent p-0">
+                <TabsTrigger value="data" className="h-10 rounded-none border-b-2 border-transparent px-3 text-[13px] data-[state=active]:border-[hsl(152,55%,30%)] data-[state=active]:text-[hsl(152,55%,22%)]">Data</TabsTrigger>
+                <TabsTrigger value="rincian" className="h-10 rounded-none border-b-2 border-transparent px-3 text-[13px] data-[state=active]:border-[hsl(152,55%,30%)] data-[state=active]:text-[hsl(152,55%,22%)]">Rincian</TabsTrigger>
               </TabsList>
 
               <TabsContent value="data" className="mt-3 flex-1 min-h-0 overflow-auto">
-                <div className="border border-[#d0d0d0] bg-white p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] gap-x-4 gap-y-3 items-center text-[13px]">
-                    <Label className="text-[13px]">Tanggal</Label>
-                    {mode !== "view" ? (
-                      <Input type="date" value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} className="h-10 text-[13px] rounded-none" />
-                    ) : (
-                      <Input value={selectedItem?.tanggal || ""} readOnly className="h-9 text-[12px] bg-[#f2f2f2] rounded-none" />
-                    )}
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-[hsl(152,25%,85%)] bg-white p-4">
+                    <div className="text-[11px] font-semibold tracking-wider text-[hsl(152,55%,30%)]">IDENTITAS TRANSAKSI</div>
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-[13px]">
+                      <div className="space-y-1">
+                        <Label className="text-[12px]">Tanggal<span className="text-destructive">*</span></Label>
+                        {mode !== "view" ? (
+                          <Input type="date" value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} className="h-10 text-[13px]" />
+                        ) : (
+                          <Input value={selectedItem?.tanggal || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2]" />
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[12px]">Nomor Bukti / Ref<span className="text-destructive">*</span></Label>
+                        {mode !== "view" ? (
+                          <Input value={form.nomorBukti} onChange={e => setForm({ ...form, nomorBukti: e.target.value })} placeholder="Nomor referensi..." className="h-10 text-[13px]" />
+                        ) : (
+                          <Input value={selectedItem?.nomorBukti || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2]" />
+                        )}
+                      </div>
+                      <div className="md:col-span-2 space-y-1">
+                        <Label className="text-[12px]">Uraian / Keterangan<span className="text-destructive">*</span></Label>
+                        {mode !== "view" ? (
+                          <Input value={form.uraian} onChange={e => setForm({ ...form, uraian: e.target.value })} placeholder="Deskripsi singkat transaksi..." className="h-10 text-[13px]" />
+                        ) : (
+                          <Input value={selectedItem?.uraian || ""} readOnly className="h-10 text-[13px] bg-[#f2f2f2]" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-                    <Label className="text-[13px]">Nomor Bukti / Ref</Label>
-                    {mode !== "view" ? (
-                      <Input value={form.nomorBukti} onChange={e => setForm({ ...form, nomorBukti: e.target.value })} className="h-10 text-[13px] rounded-none" />
-                    ) : (
-                      <Input value={selectedItem?.nomorBukti || ""} readOnly className="h-9 text-[12px] bg-[#f2f2f2] rounded-none" />
-                    )}
+                  <div className="rounded-xl border border-[hsl(152,25%,85%)] bg-white p-4 overflow-hidden">
+                    <div className="text-[11px] font-semibold tracking-wider text-[hsl(152,55%,30%)]">RINCIAN AKUN</div>
+                    <div className="mt-3 overflow-auto border border-[hsl(152,25%,85%)] rounded-lg">
+                      <RawTable className="min-w-[860px]">
+                        <TableHeader>
+                          <TableRow className="bg-[hsl(152,25%,97%)]">
+                            <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[180px]">KD RINCIAN</TableHead>
+                            <TableHead className="h-10 px-3 text-[12px] font-semibold">NAMA RINCIAN</TableHead>
+                            <TableHead className="h-10 px-3 text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">DEBET</TableHead>
+                            <TableHead className="h-10 px-3 text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">KREDIT</TableHead>
+                            {mode !== "view" && <TableHead className="h-10 px-3 w-[72px]"></TableHead>}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {displayRincian.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={mode !== "view" ? 5 : 4} className="py-10 text-center text-[12px] text-muted-foreground">
+                                Belum ada rincian ditambahkan
+                              </TableCell>
+                            </TableRow>
+                          ) : displayRincian.map((r) => (
+                            <TableRow key={r.id} className="hover:bg-[hsl(152,35%,96%)]">
+                              <TableCell className="px-3 py-2 text-[13px] font-mono whitespace-nowrap">{r.kodeRekening}</TableCell>
+                              <TableCell className="px-3 py-2 text-[13px]">{r.namaRekening}</TableCell>
+                              <TableCell className="px-3 py-2 text-[13px] text-right tabular-nums">{r.debet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell className="px-3 py-2 text-[13px] text-right tabular-nums">{r.kredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
+                              {mode !== "view" && (
+                                <TableCell className="px-3 py-2 text-right">
+                                  <Button size="sm" variant="outline" className="h-8 px-3 text-[12px] border-[hsl(152,25%,78%)]" onClick={() => removeRincian(r.id)}>
+                                    Hapus
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))}
+                          {mode !== "view" && (
+                            <TableRow className="bg-white">
+                              <TableCell className="px-3 py-2">
+                                <Select value={rincianForm.kodeRekening} onValueChange={v => {
+                                  const r = rekeningAset.find(x => x.kode === v);
+                                  setRincianForm({ ...rincianForm, kodeRekening: v, namaRekening: r?.uraian || "" });
+                                }}>
+                                  <SelectTrigger className="h-10 text-[13px]"><SelectValue placeholder="-- Pilih --" /></SelectTrigger>
+                                  <SelectContent>{rekeningAset.map(r => <SelectItem key={r.kode} value={r.kode}>{r.kode}</SelectItem>)}</SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell className="px-3 py-2">
+                                <Input value={rincianForm.namaRekening} readOnly placeholder="Nama akun" className="h-10 text-[13px] bg-[#f2f2f2]" />
+                              </TableCell>
+                              <TableCell className="px-3 py-2">
+                                <Input type="number" value={rincianForm.debet || ""} onChange={e => setRincianForm({ ...rincianForm, debet: Number(e.target.value) })} className="h-10 text-[13px] text-right tabular-nums" />
+                              </TableCell>
+                              <TableCell className="px-3 py-2">
+                                <Input type="number" value={rincianForm.kredit || ""} onChange={e => setRincianForm({ ...rincianForm, kredit: Number(e.target.value) })} className="h-10 text-[13px] text-right tabular-nums" />
+                              </TableCell>
+                              <TableCell className="px-3 py-2 text-right">
+                                <Button size="sm" className="h-10 px-3 bg-[hsl(152,55%,30%)] hover:bg-[hsl(152,55%,26%)]" onClick={addRincian}>
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </RawTable>
+                    </div>
+                  </div>
 
-                    <Label className="text-[13px]">Uraian</Label>
-                    {mode !== "view" ? (
-                      <Input value={form.uraian} onChange={e => setForm({ ...form, uraian: e.target.value })} className="h-10 text-[13px] rounded-none" />
-                    ) : (
-                      <Input value={selectedItem?.uraian || ""} readOnly className="h-9 text-[12px] bg-[#f2f2f2] rounded-none" />
-                    )}
+                  <div className="rounded-xl border border-[hsl(152,25%,85%)] bg-white p-4">
+                    <div className="text-[11px] font-semibold tracking-wider text-[hsl(152,55%,30%)]">NOMINAL</div>
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-[12px]">Total Debet (Rp)</Label>
+                        <Input value={totalDebet.toLocaleString("id-ID", { minimumFractionDigits: 2 })} readOnly className="h-10 text-[13px] text-right tabular-nums bg-[#f2f2f2]" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[12px]">Total Kredit (Rp)</Label>
+                        <Input value={totalKredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })} readOnly className="h-10 text-[13px] text-right tabular-nums bg-[#f2f2f2]" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="rincian" className="mt-3 flex-1 min-h-0 overflow-auto">
-                <div className="border border-[#d0d0d0] bg-white p-4 overflow-hidden">
-                  <div className="text-[12px] font-semibold text-[#14532d] mb-3">Rincian SiLPA Tahun Sebelumnya</div>
-                  <div className="border border-[#d0d0d0] bg-white overflow-hidden max-h-[40vh] md:max-h-[46vh] overflow-auto">
+                <div className="rounded-xl border border-[hsl(152,25%,85%)] bg-white p-4 overflow-hidden">
+                  <div className="text-[12px] font-semibold text-[hsl(152,55%,22%)] mb-3">Rincian SiLPA Tahun Sebelumnya</div>
+                  <div className="border border-[hsl(152,25%,85%)] bg-white overflow-hidden rounded-lg max-h-[46vh] overflow-auto">
                     <RawTable className="min-w-[860px]">
                       <TableHeader>
-                        <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
+                        <TableRow className="bg-[hsl(152,25%,97%)] sticky top-0 z-10">
                           <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[180px]">RincianSD</TableHead>
                           <TableHead className="h-10 px-3 text-[12px] font-semibold">Nama Rincian</TableHead>
                           <TableHead className="h-10 px-3 text-[12px] font-semibold text-right whitespace-nowrap w-[160px]">Debet</TableHead>
@@ -311,7 +439,7 @@ function SilpaTab() {
                             )}
                           </TableRow>
                         ))}
-                        <TableRow className="bg-[#f4f4f4] font-bold">
+                        <TableRow className="bg-[hsl(152,25%,97%)] font-bold">
                           <TableCell colSpan={2} className="px-3 py-2 text-[13px] text-right">Total</TableCell>
                           <TableCell className="px-3 py-2 text-[13px] text-right tabular-nums">{totalDebet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="px-3 py-2 text-[13px] text-right tabular-nums">{totalKredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}</TableCell>
@@ -330,25 +458,27 @@ function SilpaTab() {
                             const r = rekeningAset.find(x => x.kode === v);
                             setRincianForm({ ...rincianForm, kodeRekening: v, namaRekening: r?.uraian || "" });
                           }}>
-                            <SelectTrigger className="h-10 text-[13px] rounded-none"><SelectValue placeholder="Pilih" /></SelectTrigger>
+                            <SelectTrigger className="h-10 text-[13px]"><SelectValue placeholder="-- Pilih --" /></SelectTrigger>
                             <SelectContent>{rekeningAset.map(r => <SelectItem key={r.kode} value={r.kode}>{r.kode}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div>
                           <Label className="text-[11px]">Nama Rincian</Label>
-                          <Input value={rincianForm.namaRekening} readOnly className="h-10 text-[13px] bg-[#f2f2f2] rounded-none" />
+                          <Input value={rincianForm.namaRekening} readOnly className="h-10 text-[13px] bg-[#f2f2f2]" />
                         </div>
                         <div>
                           <Label className="text-[11px]">Debet</Label>
-                          <Input type="number" value={rincianForm.debet || ""} onChange={e => setRincianForm({ ...rincianForm, debet: Number(e.target.value) })} className="h-10 text-[13px] text-right tabular-nums rounded-none" />
+                          <Input type="number" value={rincianForm.debet || ""} onChange={e => setRincianForm({ ...rincianForm, debet: Number(e.target.value) })} className="h-10 text-[13px] text-right tabular-nums" />
                         </div>
                         <div>
                           <Label className="text-[11px]">Kredit</Label>
-                          <Input type="number" value={rincianForm.kredit || ""} onChange={e => setRincianForm({ ...rincianForm, kredit: Number(e.target.value) })} className="h-10 text-[13px] text-right tabular-nums rounded-none" />
+                          <Input type="number" value={rincianForm.kredit || ""} onChange={e => setRincianForm({ ...rincianForm, kredit: Number(e.target.value) })} className="h-10 text-[13px] text-right tabular-nums" />
                         </div>
                       </div>
                       <div className="flex justify-end">
-                        <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={addRincian}>Tambah</Button>
+                        <Button size="sm" className="h-10 px-4 bg-[hsl(152,55%,30%)] hover:bg-[hsl(152,55%,26%)]" onClick={addRincian}>
+                          <Plus className="h-4 w-4 mr-2" /> Tambah
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -362,25 +492,25 @@ function SilpaTab() {
           )}
         </div>
 
-        <div className="border-t border-[#8e8e8e] bg-[#f4f4f4] px-4 py-3 flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleTambah} disabled={mode !== "view"}>
+        <div className="border-t border-[hsl(152,25%,85%)] bg-[hsl(152,25%,97%)] px-4 py-3 flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" className="h-9 text-[12px] border-[hsl(152,25%,78%)]" onClick={handleTambah} disabled={mode !== "view"}>
             <Plus className="h-4 w-4 mr-2" /> Tambah
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleUbah} disabled={mode !== "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] border-[hsl(152,25%,78%)]" onClick={handleUbah} disabled={mode !== "view"}>
             <Pencil className="h-4 w-4 mr-2" /> Ubah
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none text-destructive" onClick={handleHapus} disabled={mode !== "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] border-[hsl(152,25%,78%)] text-destructive" onClick={handleHapus} disabled={mode !== "view"}>
             <Trash2 className="h-4 w-4 mr-2" /> Hapus
           </Button>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={handleBatal} disabled={mode === "view"}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] border-[hsl(152,25%,78%)]" onClick={handleBatal} disabled={mode === "view"}>
             <X className="h-4 w-4 mr-2" /> Batal
           </Button>
-          <Button size="sm" className="h-9 text-[12px] rounded-none" onClick={handleSimpan} disabled={mode === "view"}>
+          <Button size="sm" className="h-9 text-[12px] bg-[hsl(152,55%,30%)] hover:bg-[hsl(152,55%,26%)]" onClick={handleSimpan} disabled={mode === "view"}>
             <Save className="h-4 w-4 mr-2" /> Simpan
           </Button>
           <div className="flex-1" />
           <span className="text-[11px] text-muted-foreground">Record {items.length > 0 ? (items.findIndex(i => i.id === selectedId) + 1) : 0}/{items.length}</span>
-          <Button size="sm" variant="outline" className="h-9 text-[12px] rounded-none" onClick={() => window.history.back()}>
+          <Button size="sm" variant="outline" className="h-9 text-[12px] border-[hsl(152,25%,78%)]" onClick={() => window.history.back()}>
             <DoorOpen className="h-4 w-4 mr-2" /> Tutup
           </Button>
         </div>
@@ -399,6 +529,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   const [mobilePane, setMobilePane] = useState<"list" | "detail">("list");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewMutasiTunai, setPreviewMutasiTunai] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const rekeningPendapatan = getRekeningDetail("pendapatan");
 
@@ -422,6 +553,13 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   }, [mode, selectedId]);
 
   const items = allItems.filter(i => i.jenis === jenis);
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((i) => `${i.noBukti} ${i.uraian}`.toLowerCase().includes(q));
+  }, [items, searchQuery]);
+  const totalPenerimaan = useMemo(() => items.reduce((s, i) => s + (Number(i.jumlah) || 0), 0), [items]);
+  const processedCount = useMemo(() => items.filter((i) => (i.rincian?.length || 0) > 0).length, [items]);
   const lastTemplate = useMemo(() => {
     for (let i = items.length - 1; i >= 0; i--) return items[i];
     return undefined;
@@ -668,19 +806,19 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   }, [rincianForm.kodeRekening, rincianForm.nilai, rincianForm.sumberDana, rincianInfo]);
 
   return (
-    <div className="h-full min-h-0 flex flex-col border border-[#8e8e8e] bg-[#efefef] overflow-hidden">
-      <div className="bg-gradient-to-b from-[#f3fff3] to-[#d5f5d5] border-b border-[#8e8e8e]">
-        <div className="py-2 text-center font-bold tracking-wide text-[#b91c1c] text-[13px]">{title}</div>
+    <div className="h-full min-h-0 flex flex-col overflow-hidden rounded-xl border border-[hsl(152,25%,78%)] bg-[hsl(152,25%,98%)]">
+      <div className="bg-gradient-to-b from-[hsl(152,55%,30%)] to-[hsl(152,48%,22%)]">
+        <div className="py-2 text-center text-[13px] font-bold tracking-wide text-white">{title}</div>
       </div>
 
       <div className="px-3 pt-3 lg:hidden">
-        <div className="inline-flex border border-[#c8c8c8] bg-white/70">
+        <div className="inline-flex overflow-hidden rounded-lg border border-[hsl(152,25%,78%)] bg-white">
           <button
             type="button"
             onClick={() => setMobilePane("list")}
             className={cx(
-              "px-3 h-9 text-[13px] border-r border-[#c8c8c8] flex items-center gap-2",
-              mobilePane === "list" ? "bg-[#0b74d1] text-white" : "bg-transparent text-[#1f2937]",
+              "flex h-9 items-center gap-2 border-r border-[hsl(152,25%,78%)] px-3 text-[13px]",
+              mobilePane === "list" ? "bg-[hsl(152,55%,30%)] text-white" : "bg-transparent text-[#1f2937]",
             )}
           >
             <List className="h-4 w-4" />
@@ -690,8 +828,8 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
             type="button"
             onClick={() => setMobilePane("detail")}
             className={cx(
-              "px-3 h-9 text-[13px] flex items-center gap-2",
-              mobilePane === "detail" ? "bg-[#0b74d1] text-white" : "bg-transparent text-[#1f2937]",
+              "flex h-9 items-center gap-2 px-3 text-[13px]",
+              mobilePane === "detail" ? "bg-[hsl(152,55%,30%)] text-white" : "bg-transparent text-[#1f2937]",
             )}
           >
             Detail
@@ -700,40 +838,99 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden p-3 grid gap-3 lg:grid-cols-2">
-        <div className={cx("min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col", mobilePane === "list" ? "flex" : "hidden", "lg:flex")}>
+        <div className={cx("min-h-0 overflow-hidden rounded-xl border border-[hsl(152,25%,78%)] bg-white flex flex-col", mobilePane === "list" ? "flex" : "hidden", "lg:flex")}>
+          <div className="border-b border-[hsl(152,25%,85%)] bg-[hsl(152,25%,97%)] px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[13px] font-semibold text-[#111827]">Daftar Penerimaan</div>
+              <div className="rounded-full bg-[hsl(152,30%,92%)] px-2.5 py-1 text-[11px] font-semibold text-[hsl(152,55%,22%)]">
+                {filteredItems.length} data
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-2 rounded-lg border border-[hsl(152,25%,78%)] bg-white px-3">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={"Cari no bukti..."}
+                className="h-10 w-full bg-transparent text-[13px] outline-none"
+              />
+            </div>
+
+            {jenis === "bank" && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-[hsl(152,25%,85%)] bg-[hsl(152,25%,98%)] p-3">
+                  <div className="text-[11px] font-semibold text-muted-foreground">TOTAL PENERIMAAN</div>
+                  <div className="mt-1 text-[16px] font-bold text-[hsl(152,55%,22%)]">Rp {fmt(totalPenerimaan)}</div>
+                </div>
+                <div className="rounded-xl border border-[hsl(152,25%,85%)] bg-[hsl(152,25%,98%)] p-3">
+                  <div className="text-[11px] font-semibold text-muted-foreground">SUDAH DIPROSES</div>
+                  <div className="mt-1 text-[16px] font-bold text-[hsl(152,55%,22%)]">{processedCount} transaksi</div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex-1 min-h-0 overflow-auto">
             <RawTable className="min-w-[860px]">
               <TableHeader>
-                <TableRow className="bg-[#f4f4f4] sticky top-0 z-10">
+                <TableRow className="bg-[hsl(152,25%,97%)] sticky top-0 z-10">
                   <TableHead className="h-10 px-3 w-8"></TableHead>
-                  <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[120px]">Tanggal</TableHead>
-                  <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[240px]">No Bukti</TableHead>
-                  <TableHead className="h-10 px-3 text-[12px] font-semibold">Uraian</TableHead>
-                  <TableHead className="h-10 px-3 text-[12px] font-semibold text-right whitespace-nowrap w-[170px]">Jumlah</TableHead>
+                  <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[120px]">TANGGAL</TableHead>
+                  <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[240px]">NO BUKTI</TableHead>
+                  <TableHead className="h-10 px-3 text-[12px] font-semibold text-right whitespace-nowrap w-[170px]">JUMLAH (RP)</TableHead>
+                  {jenis === "bank" ? (
+                    <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[120px]">BANK</TableHead>
+                  ) : (
+                    <TableHead className="h-10 px-3 text-[12px] font-semibold whitespace-nowrap w-[120px]">STATUS</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.length === 0 ? (
+                {filteredItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-10 text-sm">
-                      Belum ada data
+                    <TableCell colSpan={jenis === "bank" ? 5 : 5} className="py-10">
+                      <div className="mx-auto max-w-sm rounded-xl border border-dashed border-[hsl(152,30%,80%)] bg-[hsl(152,25%,98%)] p-6 text-center">
+                        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(152,35%,92%)] text-[hsl(152,55%,22%)]">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        <div className="text-[13px] font-semibold text-[#111827]">Belum ada data</div>
+                        <div className="mt-1 text-[12px] text-muted-foreground">Klik Tambah untuk memulai.</div>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : items.map((item, idx) => {
+                ) : filteredItems.map((item, idx) => {
                   const active = selectedId === item.id;
+                  const status = (item.rincian?.length || 0) > 0 ? "Proses" : "Draft";
                   return (
                     <TableRow
                       key={item.id}
-                      className={`cursor-pointer ${active ? "bg-[#0b74d1] text-white" : (idx % 2 ? "bg-white/70" : "bg-transparent")} hover:bg-[#f0fdf4]`}
+                      className={cx(
+                        "cursor-pointer",
+                        active ? "bg-[hsl(152,55%,92%)]" : (idx % 2 ? "bg-white" : "bg-transparent"),
+                        "hover:bg-[hsl(152,35%,96%)]",
+                      )}
                       onClick={() => { if (mode === "view") { setSelectedId(item.id); } }}
                     >
-                        <TableCell className="px-3 py-2 text-[13px] text-center font-mono">{active ? "▶" : ""}</TableCell>
-                        <TableCell className="px-3 py-2 text-[13px] whitespace-nowrap">{item.tanggal}</TableCell>
-                        <TableCell className="px-3 py-2 text-[13px] font-mono whitespace-nowrap">{item.noBukti}</TableCell>
-                        <TableCell className="px-3 py-2 text-[13px]">
-                          <div className="truncate max-w-[260px] sm:max-w-[380px] md:max-w-[560px] lg:max-w-[760px]" title={item.uraian}>{item.uraian}</div>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-[13px] text-right whitespace-nowrap tabular-nums">{fmt(item.jumlah)}</TableCell>
+                        <TableCell className="px-3 py-2 text-[13px] text-center font-mono text-muted-foreground">{active ? "▶" : ""}</TableCell>
+                        <TableCell className="px-3 py-2 text-[13px] whitespace-nowrap text-[#111827]">{item.tanggal}</TableCell>
+                        <TableCell className="px-3 py-2 text-[13px] font-mono whitespace-nowrap text-[#111827]">{item.noBukti}</TableCell>
+                        <TableCell className="px-3 py-2 text-[13px] text-right whitespace-nowrap tabular-nums text-[#111827]">{fmt(item.jumlah)}</TableCell>
+                        {jenis === "bank" ? (
+                          <TableCell className="px-3 py-2">
+                            <span className="inline-flex items-center rounded-full bg-[hsl(215,90%,95%)] px-2.5 py-1 text-[11px] font-semibold text-[hsl(215,55%,30%)]">
+                              {(item.namaBank || "-").toUpperCase()}
+                            </span>
+                          </TableCell>
+                        ) : (
+                          <TableCell className="px-3 py-2">
+                            <span className={cx(
+                              "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                              status === "Proses" ? "bg-[hsl(152,55%,30%)] text-white" : "bg-[hsl(152,25%,92%)] text-[hsl(152,55%,22%)]",
+                            )}>
+                              {status}
+                            </span>
+                          </TableCell>
+                        )}
                       </TableRow>
                   );
                 })}
@@ -742,10 +939,21 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
           </div>
         </div>
 
-        <div className={cx("min-h-0 border border-[#8e8e8e] bg-white overflow-hidden flex flex-col", mobilePane === "detail" ? "flex" : "hidden", "lg:flex")}>
-          <div className="px-3 py-2 flex items-center justify-between border-b border-[#d0d0d0] bg-[#f4f4f4]">
-            <div className="text-[11px] text-muted-foreground">{mode !== "view" ? "Auto-save aktif" : "Pilih data atau klik Tambah untuk mulai input"}</div>
-            <div className="w-48 hidden md:block"><Progress value={progressValue} className="h-2 bg-[#e5e5e5]" /></div>
+        <div className={cx("min-h-0 overflow-hidden rounded-xl border border-[hsl(152,25%,78%)] bg-white flex flex-col", mobilePane === "detail" ? "flex" : "hidden", "lg:flex")}>
+          <div className="border-b border-[hsl(152,25%,85%)] bg-[hsl(152,25%,97%)] px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[12px] text-muted-foreground">{mode !== "view" ? "Auto-save aktif" : "Pilih data atau klik Tambah untuk mulai input"}</div>
+              <div className="flex items-center gap-2">
+                <div className="hidden md:block w-56"><Progress value={progressValue} className="h-2 bg-[hsl(152,25%,90%)]" /></div>
+                <div className="text-[11px] text-muted-foreground">{Math.round(progressValue)}%</div>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <div className="text-[12px] text-muted-foreground">Preview:</div>
+              <div className="rounded-full bg-[hsl(215,90%,95%)] px-3 py-1 text-[11px] font-mono text-[hsl(215,55%,30%)]">
+                {(mode !== "view" ? (form.noBukti || generateNoBukti()) : (selectedItem?.noBukti || "—"))}
+              </div>
+            </div>
           </div>
 
           {(selectedItem || mode !== "view") ? (
@@ -1313,44 +1521,42 @@ export default function PenerimaanDesa() {
       <FormPageHeader title="Penerimaan dan Penyetoran" subtitle="Realisasi Pendapatan Desa" />
 
       <div className="flex-1 p-3 overflow-hidden">
-        <div className="h-full flex flex-col border border-[#8e8e8e] bg-[#efefef] overflow-hidden">
-          <div className="bg-gradient-to-b from-[#0b8a1f] to-[#c7f3c7] border-b border-[#8e8e8e]">
-            <div className="py-2 text-center font-extrabold tracking-widest text-[#0b2a0f]">
+        <div className="h-full flex flex-col overflow-hidden rounded-2xl border border-[hsl(152,25%,70%)] bg-[hsl(152,35%,16%)]">
+          <div className="bg-[hsl(152,55%,22%)] border-b border-[hsl(152,25%,30%)]">
+            <div className="py-2 text-center font-extrabold tracking-widest text-white">
               {namaDesa.toUpperCase()}
             </div>
           </div>
 
-          <div className="flex-1 flex min-h-0 overflow-hidden">
-            <div
-              className="w-56 border-r border-[#8e8e8e] overflow-hidden"
-              style={{
-                backgroundImage: `url(${bgSawah})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            >
-              <div className="h-full bg-white/60 backdrop-blur-[1px] p-3">
-                <div className="text-[11px] font-semibold mb-2">Menu</div>
+          <div className="flex-1 flex min-h-0 overflow-hidden bg-[hsl(152,25%,98%)]">
+            <div className="w-60 border-r border-[hsl(152,25%,78%)] bg-[hsl(152,30%,96%)]">
+              <div className="p-3">
+                <div className="text-[11px] font-semibold text-[hsl(152,55%,22%)] mb-2">MENU</div>
                 <div className="space-y-1">
                   {([
                     { id: "silpa", label: "SILPA Tahun Lalu", Icon: Layers },
                     { id: "tunai", label: "Penerimaan Tunai", Icon: Banknote },
                     { id: "bank", label: "Penerimaan Bank", Icon: Landmark },
-                  ] as Array<{ id: ActiveTab; label: string; Icon: any }>).map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setActiveTab(m.id)}
-                      className={`w-full flex items-center gap-2 px-2 py-2 text-[13px] border ${
-                        activeTab === m.id
-                          ? "bg-[#0b74d1] text-white border-[#0b74d1]"
-                          : "bg-white/70 hover:bg-white border-[#c8c8c8] text-[#1f2937]"
-                      }`}
-                    >
-                      <m.Icon className="h-4 w-4" />
-                      <span className="truncate">{m.label}</span>
-                    </button>
-                  ))}
+                  ] as Array<{ id: ActiveTab; label: string; Icon: any }>).map((m) => {
+                    const active = activeTab === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setActiveTab(m.id)}
+                        className={cx(
+                          "w-full flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                          active ? "bg-white border border-[hsl(152,25%,78%)]" : "hover:bg-white/70",
+                        )}
+                      >
+                        <span className={cx("h-8 w-8 rounded-lg flex items-center justify-center border", active ? "border-[hsl(152,55%,30%)] bg-[hsl(152,55%,92%)] text-[hsl(152,55%,22%)]" : "border-[hsl(152,25%,78%)] bg-white text-muted-foreground")}>
+                          <m.Icon className="h-4 w-4" />
+                        </span>
+                        <span className={cx("truncate", active ? "font-semibold text-[#111827]" : "text-[#1f2937]")}>{m.label}</span>
+                        {active && <span className="ml-auto h-6 w-1.5 rounded-full bg-[hsl(152,55%,30%)]" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
