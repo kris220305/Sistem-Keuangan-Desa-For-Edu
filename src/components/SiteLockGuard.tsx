@@ -7,6 +7,8 @@ import { Lock, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { saveState } from "@/data/app-state";
+import { getDemoSeedData } from "@/data/demo-seed-data";
 
 const ADMIN_BYPASS_PASSWORD = "12345";
 
@@ -19,6 +21,27 @@ function wipeLocalUserData() {
     }
   }
   sessionStorage.clear();
+}
+
+function wipeAllDataInput() {
+  saveState({
+    pendapatan: [],
+    belanja: [],
+    pembiayaan: [],
+    penerimaan: [],
+    silpa: [],
+    spp: [],
+    pencairan: [],
+    penyetoranPajak: [],
+    saldoAwal: [],
+    spjPanjar: [],
+    jurnalUmum: [],
+    kegiatanAnggaran: [],
+    sisaPanjar: [],
+    __meta: {},
+  });
+  try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
+  try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -121,6 +144,30 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
           setLocked(false);
           setMaxReached(false);
           setChecking(false);
+          return;
+        }
+
+        const wipeVer = Math.max(0, Math.floor(Number((settings as any).wipe_all_version || 0) || 0));
+        const demoVer = Math.max(0, Math.floor(Number((settings as any).demo_seed_version || 0) || 0));
+        const appliedWipe = Math.max(0, Math.floor(Number(localStorage.getItem("siskeudes_wipe_all_applied_v") || "0") || 0));
+        const appliedDemo = Math.max(0, Math.floor(Number(localStorage.getItem("siskeudes_demo_seed_applied_v") || "0") || 0));
+
+        if (wipeVer > 0 && wipeVer !== appliedWipe) {
+          localStorage.setItem("siskeudes_wipe_all_applied_v", String(wipeVer));
+          wipeAllDataInput();
+          toast.success("Semua data input direset oleh admin.");
+          setTimeout(() => window.location.reload(), 800);
+          return;
+        }
+
+        if (demoVer > 0 && demoVer !== appliedDemo) {
+          localStorage.setItem("siskeudes_demo_seed_applied_v", String(demoVer));
+          const demo = getDemoSeedData();
+          saveState(demo);
+          try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
+          try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
+          toast.success("Data demo dimuat oleh admin.");
+          setTimeout(() => window.location.reload(), 800);
           return;
         }
 

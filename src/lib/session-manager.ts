@@ -158,7 +158,12 @@ export async function getSiteSettings() {
   }
 }
 
-export async function updateSiteSettings(updates: { is_locked?: boolean; max_users?: number }) {
+export async function updateSiteSettings(updates: {
+  is_locked?: boolean;
+  max_users?: number;
+  demo_seed_version?: number;
+  wipe_all_version?: number;
+}) {
   if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
   const adminToken = getAdminToken();
   if (!adminToken) throw new Error("Admin token tidak tersedia");

@@ -1,10 +1,4 @@
 import { useState, useEffect } from "react";
-import bgLandscape from "@/assets/bg-sawah-sunset.jpg";
-import { saveState, loadState } from "@/data/app-state";
-import { getDemoSeedData } from "@/data/demo-seed-data";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Database, Trash2 } from "lucide-react";
 
 export default function Beranda() {
   const [loaded, setLoaded] = useState(false);
@@ -17,7 +11,7 @@ export default function Beranda() {
   return (
     <div className="h-full flex flex-col items-center justify-center relative overflow-hidden">
       {/* Animated overlay gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[hsl(152,40%,10%/0.3)] via-transparent to-[hsl(152,40%,10%/0.5)]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[hsl(152,40%,10%/0.55)] via-[hsl(152,40%,10%/0.35)] to-[hsl(152,40%,10%/0.65)] backdrop-blur-[1px]" />
 
       {/* Floating particles effect */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -48,20 +42,20 @@ export default function Beranda() {
         </div>
 
         {/* Title */}
-        <h1 className={`text-4xl md:text-5xl lg:text-6xl font-extrabold font-heading tracking-tight transition-all duration-700 delay-300 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          
-
-          
+        <h1 className={`text-4xl md:text-5xl lg:text-6xl font-extrabold font-heading tracking-tight text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.55)] transition-all duration-700 delay-300 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          SISKEUDES BUDDY
         </h1>
 
         {/* Subtitle */}
         <div className={`mt-3 transition-all duration-700 delay-500 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <p className="text-lg font-semibold font-heading drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] text-popover-foreground md:text-4xl">
-            Sistem Pengelolaan Keuangan Desa
-          </p>
-          <p className="text-[hsl(0,0%,90%)] mt-1 font-medium drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] text-5xl">
-            For Education
-          </p>
+          <div className="inline-block px-5 py-4 rounded-2xl bg-[hsl(152,45%,10%/0.35)] backdrop-blur-md border border-[hsl(0,0%,100%/0.18)] shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
+            <p className="text-lg md:text-4xl font-semibold font-heading text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+              Sistem Pengelolaan Keuangan Desa
+            </p>
+            <p className="mt-1 text-3xl md:text-5xl font-bold text-white/95 tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+              For Education
+            </p>
+          </div>
         </div>
 
         {/* Decorative line */}
@@ -71,38 +65,6 @@ export default function Beranda() {
         <p className={`mt-5 text-xs md:text-sm text-[hsl(0,0%,85%)] italic max-w-md mx-auto drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-all duration-700 delay-[900ms] ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           Menuju Tatakelola Keuangan Desa yang Akuntabel dan Transparan
         </p>
-
-        {/* Demo Data Buttons */}
-        <div className={`mt-4 flex flex-col items-center gap-2 transition-all duration-700 delay-[1000ms] ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 bg-[hsl(0,0%,100%/0.15)] backdrop-blur-md border-[hsl(0,0%,100%/0.3)] text-[hsl(0,0%,90%)] hover:bg-[hsl(0,0%,100%/0.25)]"
-            onClick={() => {
-              const demo = getDemoSeedData();
-              saveState(demo);
-              toast.success("Data demo (Soal Desa Arfai 2024) berhasil dimuat! Silakan cek setiap form.");
-            }}
-          >
-            <Database size={14} /> Muat Data Demo (Soal Desa Arfai)
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 bg-[hsl(0,80%,50%/0.15)] backdrop-blur-md border-[hsl(0,80%,60%/0.3)] text-[hsl(0,80%,80%)] hover:bg-[hsl(0,80%,50%/0.25)]"
-            onClick={() => {
-              saveState({
-                pendapatan: [], belanja: [], pembiayaan: [], penerimaan: [],
-                silpa: [], spp: [], pencairan: [], penyetoranPajak: [],
-                saldoAwal: [], spjPanjar: [], jurnalUmum: [], kegiatanAnggaran: [],
-              });
-              localStorage.removeItem('siskeudes_mutasi_kas');
-              toast.success("Seluruh data input berhasil dihapus!");
-            }}
-          >
-            <Trash2 size={14} /> Hapus Semua Data Input
-          </Button>
-        </div>
 
         {/* Year badge */}
         <div className={`mt-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[hsl(0,0%,100%/0.15)] backdrop-blur-md border border-[hsl(0,0%,100%/0.2)] transition-all duration-700 delay-[1100ms] ${loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>

@@ -46,31 +46,28 @@ export default function LaporanPenjabaran() {
                 <th className="py-2 px-2 text-left border border-gray-400 w-28">KODE REK</th>
                 <th className="py-2 px-2 text-left border border-gray-400">URAIAN</th>
                 <th className="py-2 px-2 text-right border border-gray-400 w-32">ANGGARAN (Rp)</th>
-                <th className="py-2 px-2 text-right border border-gray-400 w-32">SETELAH PAK (Rp)</th>
               </tr>
             </thead>
             <tbody>
               <tr className="font-bold bg-gray-100">
                 <td className="py-1.5 px-2 border border-gray-400" colSpan={2}>1. PENDAPATAN</td>
-                <td className="border border-gray-400"></td><td className="border border-gray-400"></td>
+                <td className="border border-gray-400"></td>
               </tr>
               {data.realisasiPendapatan.map(r => (
                 <tr key={r.kodeRekening}>
                   <td className="py-1 px-2 border border-gray-300 pl-6">{r.kodeRekening}</td>
                   <td className="py-1 px-2 border border-gray-300">{r.namaRekening}</td>
-                  <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah(r.anggaran - r.anggaranPAK)}</td>
                   <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah(r.anggaran)}</td>
                 </tr>
               ))}
               <tr className="font-bold bg-gray-100">
                 <td className="py-1.5 px-2 border border-gray-400" colSpan={2}>JUMLAH PENDAPATAN</td>
-                <td className="py-1.5 px-2 text-right border border-gray-400">{formatRupiah(data.totalAnggaranPendapatan - data.realisasiPendapatan.reduce((s, r) => s + r.anggaranPAK, 0))}</td>
                 <td className="py-1.5 px-2 text-right border border-gray-400">{formatRupiah(data.totalAnggaranPendapatan)}</td>
               </tr>
 
               <tr className="font-bold bg-gray-100">
                 <td className="py-1.5 px-2 border border-gray-400" colSpan={2}>2. BELANJA</td>
-                <td className="border border-gray-400"></td><td className="border border-gray-400"></td>
+                <td className="border border-gray-400"></td>
               </tr>
               {Array.from(belanjaByBidang.entries()).map(([bidangKode, items]) => {
                 const bidang = bidangKegiatanData.find(b => b.kode === bidangKode);
@@ -80,14 +77,12 @@ export default function LaporanPenjabaran() {
                     <tr className="font-semibold bg-gray-50">
                       <td className="py-1 px-2 border border-gray-300 pl-4">{bidangKode}</td>
                       <td className="py-1 px-2 border border-gray-300">{bidang?.nama || bidangKode}</td>
-                      <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah(items.reduce((s, b) => s + b.anggaran, 0))}</td>
                       <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah(totalBidang)}</td>
                     </tr>
                     {items.map(b => (
                       <tr key={b.id}>
                         <td className="py-1 px-2 border border-gray-300 pl-8">{b.kodeRekening}</td>
                         <td className="py-1 px-2 border border-gray-300 pl-4">{b.uraian || b.namaRekening}</td>
-                        <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah(b.anggaran)}</td>
                         <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah((b.anggaran || 0) + (b.perubahanAnggaran || 0))}</td>
                       </tr>
                     ))}
@@ -96,24 +91,22 @@ export default function LaporanPenjabaran() {
               })}
               <tr className="font-bold bg-gray-100">
                 <td className="py-1.5 px-2 border border-gray-400" colSpan={2}>JUMLAH BELANJA</td>
-                <td className="py-1.5 px-2 text-right border border-gray-400">{formatRupiah(state.belanja.reduce((s, b) => s + b.anggaran, 0))}</td>
                 <td className="py-1.5 px-2 text-right border border-gray-400">{formatRupiah(data.totalAnggaranBelanja)}</td>
               </tr>
 
               <tr className="font-bold bg-gray-200">
                 <td className="py-2 px-2 border border-gray-400" colSpan={2}>SURPLUS / (DEFISIT)</td>
-                <td className="py-2 px-2 text-right border border-gray-400" colSpan={2}>{formatRupiah(data.surplusDefisitAnggaran)}</td>
+                <td className="py-2 px-2 text-right border border-gray-400">{formatRupiah(data.surplusDefisitAnggaran)}</td>
               </tr>
 
               <tr className="font-bold bg-gray-100">
                 <td className="py-1.5 px-2 border border-gray-400" colSpan={2}>3. PEMBIAYAAN</td>
-                <td className="border border-gray-400"></td><td className="border border-gray-400"></td>
+                <td className="border border-gray-400"></td>
               </tr>
               {data.realisasiPembiayaan.penerimaan.map(r => (
                 <tr key={r.kodeRekening}>
                   <td className="py-1 px-2 border border-gray-300 pl-6">{r.kodeRekening}</td>
                   <td className="py-1 px-2 border border-gray-300">{r.namaRekening}</td>
-                  <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah(r.anggaran)}</td>
                   <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah(r.anggaran)}</td>
                 </tr>
               ))}
@@ -122,17 +115,16 @@ export default function LaporanPenjabaran() {
                   <td className="py-1 px-2 border border-gray-300 pl-6">{r.kodeRekening}</td>
                   <td className="py-1 px-2 border border-gray-300">{r.namaRekening}</td>
                   <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah(r.anggaran)}</td>
-                  <td className="py-1 px-2 text-right border border-gray-300">{formatRupiah(r.anggaran)}</td>
                 </tr>
               ))}
 
               <tr className="font-bold bg-gray-100">
                 <td className="py-1.5 px-2 border border-gray-400" colSpan={2}>PEMBIAYAAN NETTO</td>
-                <td className="py-1.5 px-2 text-right border border-gray-400" colSpan={2}>{formatRupiah(data.pembiayaanNettoAnggaran)}</td>
+                <td className="py-1.5 px-2 text-right border border-gray-400">{formatRupiah(data.pembiayaanNettoAnggaran)}</td>
               </tr>
               <tr className="font-bold bg-gray-700 text-white">
                 <td className="py-2 px-2 border border-gray-400" colSpan={2}>SISA LEBIH / (KURANG) PEMBIAYAAN ANGGARAN</td>
-                <td className="py-2 px-2 text-right border border-gray-400" colSpan={2}>{formatRupiah(data.silpaAnggaran)}</td>
+                <td className="py-2 px-2 text-right border border-gray-400">{formatRupiah(data.silpaAnggaran)}</td>
               </tr>
             </tbody>
           </table>

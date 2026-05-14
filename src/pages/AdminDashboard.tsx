@@ -81,9 +81,12 @@ export default function AdminDashboard() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [activeSessions, setActiveSessions] = useState<SessionRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
-  const [siteSettings, setSiteSettings] = useState<{ is_locked: boolean; max_users: number | null }>({
-    is_locked: false, max_users: 0,
-  });
+  const [siteSettings, setSiteSettings] = useState<{
+    is_locked: boolean;
+    max_users: number | null;
+    demo_seed_version: number;
+    wipe_all_version: number;
+  }>({ is_locked: false, max_users: 0, demo_seed_version: 0, wipe_all_version: 0 });
   const [lockDialog, setLockDialog] = useState(false);
   const [lockPassword, setLockPassword] = useState("");
   const [lockAction, setLockAction] = useState<"lock" | "unlock">("lock");
@@ -114,7 +117,14 @@ export default function AdminDashboard() {
       setSessions(all as SessionRow[]);
       setActiveSessions(active as SessionRow[]);
       setReports(submitted as ReportRow[]);
-      if (settings) setSiteSettings({ is_locked: settings.is_locked, max_users: settings.max_users });
+      if (settings) {
+        setSiteSettings({
+          is_locked: settings.is_locked,
+          max_users: settings.max_users,
+          demo_seed_version: (settings as any).demo_seed_version ?? 0,
+          wipe_all_version: (settings as any).wipe_all_version ?? 0,
+        });
+      }
 
       // Build limits map keyed by village_id with defaults for missing villages
       const map: Record<string, { min: number; max: number }> = {};
@@ -314,6 +324,34 @@ export default function AdminDashboard() {
     toast.success(`Batas akses diatur: ${num === 0 ? "Tidak terbatas" : num + " user"}`);
   };
 
+  const handleBroadcastDemoData = () => {
+    setConfirmAction({
+      title: "Muat Data Demo untuk Semua User",
+      description:
+        "Ini akan memuat data demo ke SEMUA user secara otomatis (global broadcast). Data input user saat ini akan tertimpa oleh data demo.",
+      action: async () => {
+        const next = Date.now();
+        await updateSiteSettings({ demo_seed_version: next });
+        toast.success("Trigger data demo dikirim. Semua user akan memuat data demo otomatis.");
+        refresh();
+      },
+    });
+  };
+
+  const handleBroadcastWipeAllData = () => {
+    setConfirmAction({
+      title: "Reset Semua Data Input untuk Semua User",
+      description:
+        "PERINGATAN: Ini akan menghapus seluruh data input di perangkat semua user (global broadcast). Semua user akan refresh otomatis.",
+      action: async () => {
+        const next = Date.now();
+        await updateSiteSettings({ wipe_all_version: next });
+        toast.success("Trigger reset data dikirim. Semua user akan direset otomatis.");
+        refresh();
+      },
+    });
+  };
+
   const handleVillageLimitChange = (villageId: string, key: "min" | "max", val: string) => {
     const num = Math.max(1, parseInt(val) || 1);
     setVillageLimits((prev) => ({
@@ -489,6 +527,12 @@ export default function AdminDashboard() {
               <Button variant="destructive" size="sm" className="gap-1.5 text-xs" onClick={handleDeleteAllPdfs}
                 disabled={pdfCount === 0}>
                 <Trash2 size={13} /> Hapus Semua PDF ({pdfCount})
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleBroadcastDemoData}>
+                <Database size={13} /> Muat Data Demo (Semua User)
+              </Button>
+              <Button variant="destructive" size="sm" className="gap-1.5 text-xs" onClick={handleBroadcastWipeAllData}>
+                <Trash2 size={13} /> Reset Data Input (Semua User)
               </Button>
             </div>
           </CardContent>

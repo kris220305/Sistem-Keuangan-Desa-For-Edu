@@ -101,6 +101,8 @@ export default defineSchema({
     key: v.string(),
     isLocked: v.boolean(),
     maxUsers: v.number(),
+    demoSeedVersion: v.optional(v.number()),
+    wipeAllVersion: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 

@@ -44,6 +44,7 @@ type Tx = {
     | "saldo_awal"
     | "penerimaan"
     | "pengeluaran"
+    | "spj_posting"
     | "potongan_pajak"
     | "mutasi_transfer"
     | "mutasi_tunai";
@@ -84,6 +85,17 @@ function sumSilpa(items: Array<{ isProses: boolean; rincian: Array<{ debet: numb
 function getKodeRekeningFromRincian(rincian?: Array<{ kodeRekening: string; nilai: number }>, fallback?: string) {
   if (rincian && rincian.length > 0) return rincian[0].kodeRekening || fallback || "";
   return fallback || "";
+}
+
+function classifyAkunToArus(kodeRekening: string): "penerimaan" | "pengeluaran" {
+  const k = String(kodeRekening || "").trim();
+  if (/^4(\.|$)/.test(k)) return "penerimaan";
+  if (/^5(\.|$)/.test(k)) return "pengeluaran";
+  if (/^6(\.|$)/.test(k)) {
+    if (/^6\.1(\.|$)/.test(k)) return "penerimaan";
+    if (/^6\.2(\.|$)/.test(k)) return "pengeluaran";
+  }
+  return "pengeluaran";
 }
 
 function loadMutasiKasSafe(m?: MutasiKasItem[]) {
@@ -133,6 +145,7 @@ export function buildBKU(
 
   const mutasiKas = loadMutasiKasSafe(opts?.mutasiKas);
   const pencairan = getEffectivePencairan(state);
+  const pcBySppId = new Map(pencairan.map((pc) => [pc.sppId, pc]));
 
   const saldoAwalTunai = sumDebetKredit(state.saldoAwal || [], "1.1.1.01");
   const saldoAwalBank = sumDebetKredit(state.saldoAwal || [], "1.1.1.02");
@@ -180,6 +193,93 @@ export function buildBKU(
     });
   });
 
+  (state.spp || []).forEach((spp) => {
+    if ((spp as any).isFinal === false) return;
+    if (spp.jenis === "panjar") return;
+
+    const pc = pcBySppId.get(spp.id);
+    const pembayaran = pc?.pembayaran || spp.pembayaran || "bank";
+    const isTunai = pembayaran === "tunai";
+    if (jenis === "tunai" && !isTunai) return;
+    if (jenis === "bank" && isTunai) return;
+
+    const tanggal = pc?.tanggal || spp.tanggalSPP;
+    const noBukti = pc?.nomorPencairan || spp.nomorSPP;
+    const lines = (spp.rincian || []).filter((r) => Number(r.nilai || 0) > 0);
+    if (lines.length === 0) return;
+
+    lines.forEach((r) => {
+      const arus = classifyAkunToArus(r.kodeRekening);
+      pushTx({
+        tanggal,
+        kodeRekening: r.kodeRekening,
+        uraian: `${spp.uraian}${r.namaKegiatan ? `\n${r.namaKegiatan}` : ""}${r.namaRekening ? `\n${r.namaRekening}` : ""}`.trim(),
+        penerimaan: arus === "penerimaan" ? Number(r.nilai || 0) : 0,
+        pengeluaran: arus === "pengeluaran" ? Number(r.nilai || 0) : 0,
+        noBukti,
+        kind: "spj_posting",
+        sourceId: `${spp.id}:${r.id}`,
+      });
+    });
+  });
+
+  (state.spjPanjar || []).forEach((spj) => {
+    const spp = (state.spp || []).find((s) => s.id === spj.sppId);
+    if (!spp) return;
+    if ((spp as any).isFinal === false) return;
+
+    const pc = pcBySppId.get(spp.id);
+    const pembayaran = pc?.pembayaran || spp.pembayaran || "bank";
+    const isTunai = pembayaran === "tunai";
+    if (jenis === "tunai" && !isTunai) return;
+    if (jenis === "bank" && isTunai) return;
+
+    const tanggal = spj.tanggalSPJ || pc?.tanggal || spp.tanggalSPP;
+    const noBukti = spj.nomorSPJ || spp.nomorSPP;
+    const lines = (spj.rincianSPJ || []).filter((r) => Number(r.nilai || 0) > 0);
+    if (lines.length === 0) return;
+
+    lines.forEach((r) => {
+      const arus = classifyAkunToArus(r.kodeRekening);
+      pushTx({
+        tanggal,
+        kodeRekening: r.kodeRekening,
+        uraian: `${spj.keterangan || spp.uraian}${r.namaKegiatan ? `\n${r.namaKegiatan}` : ""}${r.namaRekening ? `\n${r.namaRekening}` : ""}`.trim(),
+        penerimaan: arus === "penerimaan" ? Number(r.nilai || 0) : 0,
+        pengeluaran: arus === "pengeluaran" ? Number(r.nilai || 0) : 0,
+        noBukti,
+        kind: "spj_posting",
+        sourceId: `${spj.id}:${r.id}`,
+      });
+    });
+  });
+
+  (state.sisaPanjar || []).forEach((sp) => {
+    const spj = (state.spjPanjar || []).find((x) => x.id === sp.spjId);
+    if (!spj) return;
+    const spp = (state.spp || []).find((s) => s.id === spj.sppId);
+    if (!spp) return;
+    if ((spp as any).isFinal === false) return;
+
+    const pc = pcBySppId.get(spp.id);
+    const pembayaran = pc?.pembayaran || spp.pembayaran || "bank";
+    const isTunai = pembayaran === "tunai";
+    if (jenis === "tunai" && !isTunai) return;
+    if (jenis === "bank" && isTunai) return;
+
+    const kodeKas = isTunai ? "1.1.1.01" : "1.1.1.02";
+    pushTx({
+      tanggal: sp.tanggal,
+      kodeRekening: kodeKas,
+      uraian: `Pengembalian Sisa Panjar\n${sp.keterangan || spj.keterangan || spp.uraian}`.trim(),
+      penerimaan: Number(sp.nominal || 0),
+      pengeluaran: 0,
+      noBukti: sp.buktiNo,
+      kind: "spj_posting",
+      sourceId: sp.id,
+    });
+  });
+
   pencairan.forEach((pc) => {
     const spp = (state.spp || []).find((s) => s.id === pc.sppId);
     if (!spp) return;
@@ -187,17 +287,25 @@ export function buildBKU(
     if (jenis === "tunai" && !isTunai) return;
     if (jenis === "bank" && isTunai) return;
 
-    const kode = getKodeRekeningFromRincian(spp.rincian || [], "");
-    pushTx({
-      tanggal: pc.tanggal,
-      kodeRekening: kode,
-      uraian: spp.uraian,
-      penerimaan: 0,
-      pengeluaran: Number(pc.jumlah || 0),
-      noBukti: pc.nomorPencairan,
-      kind: "pengeluaran",
-      sourceId: pc.id,
-    });
+    const isFinal = (spp as any).isFinal !== false;
+    const hasSpjPosting =
+      (isFinal && spp.jenis !== "panjar" && (spp.rincian || []).some((r) => Number(r.nilai || 0) > 0)) ||
+      (isFinal &&
+        spp.jenis === "panjar" &&
+        (state.spjPanjar || []).some((spj) => spj.sppId === spp.id && (spj.rincianSPJ || []).some((r) => Number(r.nilai || 0) > 0)));
+    if (!hasSpjPosting) {
+      const kode = getKodeRekeningFromRincian(spp.rincian || [], "");
+      pushTx({
+        tanggal: pc.tanggal,
+        kodeRekening: kode,
+        uraian: spp.uraian,
+        penerimaan: 0,
+        pengeluaran: Number(pc.jumlah || 0),
+        noBukti: pc.nomorPencairan,
+        kind: "pengeluaran",
+        sourceId: pc.id,
+      });
+    }
 
     (spp.buktiTransaksi || []).forEach((bt) => {
       (bt.potonganPajak || []).forEach((pp) => {
