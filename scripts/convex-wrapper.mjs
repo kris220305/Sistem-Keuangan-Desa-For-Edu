@@ -8,15 +8,19 @@ if (argv.length === 0) {
   process.exit(1);
 }
 
-for (const key of [
-  "VERCEL",
-  "VERCEL_ENV",
-  "VERCEL_URL",
-  "NOW_BUILDER",
-  "NOW_REGION",
-  "VERCEL_GIT_PROVIDER",
-]) {
-  delete process.env[key];
+for (const key of Object.keys(process.env)) {
+  if (key === "VERCEL" || key.startsWith("VERCEL_") || key.startsWith("VERCEL")) {
+    delete process.env[key];
+    continue;
+  }
+  if (key === "NOW_BUILDER" || key.startsWith("NOW_")) {
+    delete process.env[key];
+    continue;
+  }
+  if (key.startsWith("VERCEL_GIT_")) {
+    delete process.env[key];
+    continue;
+  }
 }
 
 const command = argv[0];
