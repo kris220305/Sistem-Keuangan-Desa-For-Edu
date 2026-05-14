@@ -26,7 +26,14 @@ export default function AdminLogin() {
       toast.success("Login admin berhasil");
       navigate("/admin/dashboard");
     } catch (err) {
-      toast.error((err as Error)?.message || "Password salah!");
+      const anyErr = err as any;
+      const data = anyErr?.data;
+      const msg =
+        (typeof data === "string" && data) ||
+        (data && typeof data === "object" && typeof data.message === "string" && data.message) ||
+        (typeof anyErr?.message === "string" && anyErr.message) ||
+        "Admin login gagal.";
+      toast.error(msg);
     }
   };
 

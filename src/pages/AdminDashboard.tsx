@@ -229,7 +229,14 @@ export default function AdminDashboard() {
       sessionStorage.setItem("siskeudes_admin_token", (res as any).token);
       sessionStorage.setItem("siskeudes_admin", "true");
     } catch (e) {
-      toast.error((e as Error)?.message || "Password salah!");
+      const anyErr = e as any;
+      const data = anyErr?.data;
+      const msg =
+        (typeof data === "string" && data) ||
+        (data && typeof data === "object" && typeof data.message === "string" && data.message) ||
+        (typeof anyErr?.message === "string" && anyErr.message) ||
+        "Verifikasi admin gagal.";
+      toast.error(msg);
       return;
     }
     await updateSiteSettings({ is_locked: lockAction === "lock" });
