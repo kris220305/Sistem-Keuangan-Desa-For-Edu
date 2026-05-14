@@ -19,6 +19,9 @@ for (const key of Object.keys(process.env)) {
 delete process.env.CI;
 delete process.env.GITHUB_ACTIONS;
 
+process.env.VERCEL = "";
+process.env.vercel = "";
+
 const command = argv[0];
 const commandArgs = argv.slice(1);
 
