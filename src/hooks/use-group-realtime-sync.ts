@@ -21,6 +21,14 @@ import { anyApi } from "convex/server";
 
 const LAST_LOCAL_WRITE_KEY = "siskeudes_last_local_write_at";
 
+function getLastLocalWriteAt(): number {
+  try {
+    return Math.max(0, Math.floor(Number(localStorage.getItem(LAST_LOCAL_WRITE_KEY) || "0") || 0));
+  } catch {
+    return 0;
+  }
+}
+
 function applyIncomingState(formData: Record<string, unknown>) {
   try {
     const { mutasiKas, ...rest } = formData as { mutasiKas?: unknown };
@@ -90,9 +98,19 @@ function useGroupRealtimeSyncConvex() {
     if (!groupId) return;
     if (!doc || !doc.state || typeof doc.state !== "object") return;
     if (doc.lastSessionId && doc.lastSessionId === sessionId) return;
-    const applied = applyIncomingState(doc.state as Record<string, unknown>);
-    if (applied) {
-      toast.info("Data kelompok diperbarui", { duration: 800 });
+    const lastWriteAt = getLastLocalWriteAt();
+    const msSinceWrite = Date.now() - lastWriteAt;
+    if (lastWriteAt > 0 && msSinceWrite >= 0 && msSinceWrite < 2500) {
+      toast.warning("Ada update dari anggota lain saat Anda baru mengisi. Update diterapkan sebentar lagi.", { duration: 2200 });
+      const t = setTimeout(() => {
+        const applied = applyIncomingState(doc.state as Record<string, unknown>);
+        if (applied) toast.info("Data kelompok diperbarui", { duration: 800 });
+      }, 2600);
+      return () => clearTimeout(t);
+    }
+    {
+      const applied = applyIncomingState(doc.state as Record<string, unknown>);
+      if (applied) toast.info("Data kelompok diperbarui", { duration: 800 });
     }
   }, [groupId, doc?.updatedAt]);
 

@@ -44,6 +44,14 @@ function wipeAllDataInput() {
   try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
 }
 
+function getLastLocalWriteAt(): number {
+  try {
+    return Math.max(0, Math.floor(Number(localStorage.getItem("siskeudes_last_local_write_at") || "0") || 0));
+  } catch {
+    return 0;
+  }
+}
+
 async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   const timeout = new Promise<T>((_, reject) =>
     setTimeout(() => reject(new Error("timeout")), ms)
@@ -152,7 +160,16 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
         const appliedWipe = Math.max(0, Math.floor(Number(localStorage.getItem("siskeudes_wipe_all_applied_v") || "0") || 0));
         const appliedDemo = Math.max(0, Math.floor(Number(localStorage.getItem("siskeudes_demo_seed_applied_v") || "0") || 0));
 
+        const lastWriteAt = getLastLocalWriteAt();
+        const msSinceWrite = Date.now() - lastWriteAt;
+        const isBusy = lastWriteAt > 0 && msSinceWrite >= 0 && msSinceWrite < 3000;
+
         if (wipeVer > 0 && wipeVer !== appliedWipe) {
+          if (isBusy) {
+            toast.warning("Admin meminta reset data. Sedang ada input baru — reset diterapkan sebentar lagi.", { duration: 2600 });
+            setTimeout(() => checkSettings(), 3200);
+            return;
+          }
           localStorage.setItem("siskeudes_wipe_all_applied_v", String(wipeVer));
           wipeAllDataInput();
           toast.success("Semua data input direset oleh admin.");
@@ -161,6 +178,11 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
         }
 
         if (demoVer > 0 && demoVer !== appliedDemo) {
+          if (isBusy) {
+            toast.warning("Admin memuat data demo. Sedang ada input baru — data demo diterapkan sebentar lagi.", { duration: 2600 });
+            setTimeout(() => checkSettings(), 3200);
+            return;
+          }
           localStorage.setItem("siskeudes_demo_seed_applied_v", String(demoVer));
           const demo = getDemoSeedData();
           saveState(demo);
