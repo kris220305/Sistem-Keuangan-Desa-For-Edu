@@ -25,10 +25,7 @@ const commandArgs = argv.slice(1);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const binPath =
-  process.platform === "win32"
-    ? join(__dirname, "..", "node_modules", ".bin", "convex.cmd")
-    : join(__dirname, "..", "node_modules", ".bin", "convex");
+const convexMain = join(__dirname, "..", "node_modules", "convex", "bin", "main.js");
 
 const cwd = join(__dirname, "..");
 
@@ -38,21 +35,10 @@ function quoteWindowsArg(arg) {
   return `"${arg.replaceAll('"', '""')}"`;
 }
 
-let child;
-if (process.platform === "win32") {
-  const psQuote = (s) => `'${String(s).replaceAll("'", "''")}'`;
-  const psCmd = `& ${psQuote(binPath)} ${[command, ...commandArgs].map(psQuote).join(" ")}`;
-  child = spawn("powershell.exe", ["-NoProfile", "-Command", psCmd], {
-    stdio: "inherit",
-    env: process.env,
-    cwd,
-  });
-} else {
-  child = spawn(binPath, [command, ...commandArgs], {
-    stdio: "inherit",
-    env: process.env,
-    cwd,
-  });
-}
+const child = spawn(process.execPath, [convexMain, command, ...commandArgs], {
+  stdio: "inherit",
+  env: process.env,
+  cwd,
+});
 
 child.on("exit", (code) => process.exit(code ?? 1));
