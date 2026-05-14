@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase, isSupabaseEnabled } from "@/integrations/supabase/client";
 import { getSessionId } from "@/lib/session-manager";
 import { toast } from "sonner";
 import { loadState, mergeStates, type AppState } from "@/data/app-state";
@@ -21,13 +20,6 @@ import { anyApi } from "convex/server";
  */
 
 const LAST_LOCAL_WRITE_KEY = "siskeudes_last_local_write_at";
-
-type SubscriptionEntry = {
-  refCount: number;
-  cleanup: () => void;
-};
-
-const activeSubscriptions = new Map<string, SubscriptionEntry>();
 
 function applyIncomingState(formData: Record<string, unknown>) {
   try {
@@ -60,144 +52,6 @@ function applyIncomingState(formData: Record<string, unknown>) {
   } catch {
     return false;
   }
-}
-
-async function initialPullForGroup(groupId: string, mySessionId: string) {
-  if (!supabase) return;
-  const { data } = await supabase
-    .from("user_sessions")
-    .select("session_id, form_data, last_active")
-    .eq("group_id", groupId)
-    .order("last_active", { ascending: false })
-    .limit(5);
-  if (!data || data.length === 0) return;
-  // Pick the most recently active row that's NOT mine and has non-empty form_data
-  const candidate = data.find(
-    (r) =>
-      r.session_id !== mySessionId &&
-      r.form_data &&
-      typeof r.form_data === "object" &&
-      Object.keys(r.form_data as object).length > 0,
-  );
-  if (!candidate) return;
-  const applied = applyIncomingState(candidate.form_data as Record<string, unknown>);
-  if (applied) {
-    toast.info("Memuat pekerjaan terbaru dari kelompok…", { duration: 1500 });
-  }
-}
-
-function subscribeSupabaseGroup(groupId: string, sessionId: string) {
-  if (!supabase) return () => {};
-  const existing = activeSubscriptions.get(groupId);
-  if (existing) {
-    existing.refCount += 1;
-    return () => {
-      const cur = activeSubscriptions.get(groupId);
-      if (!cur) return;
-      cur.refCount -= 1;
-      if (cur.refCount <= 0) {
-        cur.cleanup();
-        activeSubscriptions.delete(groupId);
-      }
-    };
-  }
-
-  let pendingApplyTimer: ReturnType<typeof setTimeout> | null = null;
-  let latestPayload: Record<string, unknown> | null = null;
-
-  const channel = supabase
-    .channel(`group-sync-${groupId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "UPDATE",
-        schema: "public",
-        table: "user_sessions",
-        filter: `group_id=eq.${groupId}`,
-      },
-      (payload) => {
-        const row = payload.new as { session_id?: string; form_data?: unknown };
-        if (!row || row.session_id === sessionId) return;
-        if (!row.form_data || typeof row.form_data !== "object") return;
-
-        latestPayload = row.form_data as Record<string, unknown>;
-        if (pendingApplyTimer) clearTimeout(pendingApplyTimer);
-        pendingApplyTimer = setTimeout(() => {
-          if (!latestPayload) return;
-          const changed = applyIncomingState(latestPayload);
-          latestPayload = null;
-          if (changed) toast.info("Data kelompok diperbarui", { duration: 800 });
-        }, 250);
-      },
-    )
-    .subscribe();
-
-  const cleanup = () => {
-    if (pendingApplyTimer) clearTimeout(pendingApplyTimer);
-    supabase.removeChannel(channel);
-  };
-
-  activeSubscriptions.set(groupId, { refCount: 1, cleanup });
-  return () => {
-    const cur = activeSubscriptions.get(groupId);
-    if (!cur) return;
-    cur.refCount -= 1;
-    if (cur.refCount <= 0) {
-      cur.cleanup();
-      activeSubscriptions.delete(groupId);
-    }
-  };
-}
-
-function useGroupRealtimeSyncSupabase() {
-  const sessionId = getSessionId();
-  const [groupId, setGroupId] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem("siskeudes_group_id");
-    } catch {
-      return null;
-    }
-  });
-
-  useEffect(() => {
-    if (!isSupabaseEnabled || !supabase) return;
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "siskeudes_group_id") {
-        try {
-          setGroupId(localStorage.getItem("siskeudes_group_id"));
-        } catch {
-          setGroupId(null);
-        }
-      }
-    };
-    window.addEventListener("storage", onStorage);
-
-    // Also expose a manual trigger so other code can request a pull
-    const onManualPull = () => {
-      if (groupId) initialPullForGroup(groupId, sessionId);
-    };
-    window.addEventListener("siskeudes:request-group-pull", onManualPull);
-
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("siskeudes:request-group-pull", onManualPull);
-    };
-  }, [groupId, sessionId]);
-
-  useEffect(() => {
-    if (!isSupabaseEnabled || !supabase) return;
-    if (!groupId) return;
-    let cancelled = false;
-    void (async () => {
-      await initialPullForGroup(groupId, sessionId);
-      if (cancelled) return;
-    })();
-    const unsub = subscribeSupabaseGroup(groupId, sessionId);
-    return () => {
-      cancelled = true;
-      unsub();
-    };
-  }, [groupId, sessionId]);
 }
 
 function useGroupRealtimeSyncConvex() {
@@ -252,6 +106,4 @@ function useGroupRealtimeSyncConvex() {
   }, [doc?.updatedAt]);
 }
 
-export const useGroupRealtimeSync = isConvexEnabled ? useGroupRealtimeSyncConvex : useGroupRealtimeSyncSupabase;
-
-export const _test = { activeSubscriptions, subscribeSupabaseGroup };
+export const useGroupRealtimeSync = useGroupRealtimeSyncConvex;

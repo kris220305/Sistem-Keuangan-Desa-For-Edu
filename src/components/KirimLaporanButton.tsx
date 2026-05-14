@@ -4,7 +4,8 @@ import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { isCurrentUserLeader, submitReport } from "@/lib/session-manager";
 import { loadState } from "@/data/app-state";
-import { supabase, isSupabaseEnabled } from "@/integrations/supabase/client";
+import { convex, isConvexEnabled } from "@/integrations/convex/client";
+import { anyApi } from "convex/server";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
@@ -26,8 +27,10 @@ export default function KirimLaporanButton() {
     try {
       const state = loadState();
       const sessionProgress = JSON.parse(localStorage.getItem("siskeudes_app_state") || "{}");
-      
-      await submitReport({ ...state, _progress: sessionProgress });
+
+      const sessionId = localStorage.getItem("siskeudes_session_id") || "";
+      const res = await submitReport({ ...state, _progress: sessionProgress });
+      const reportId = (res as any)?.id as string | undefined;
 
       // Generate and upload PDF of current report page
       const reportContent = document.querySelector("[id$='-content']") as HTMLElement;
@@ -65,14 +68,27 @@ export default function KirimLaporanButton() {
           const contentEl = document.querySelector("[id$='-content']");
           const reportType = contentEl?.id?.replace("-content", "") || "laporan";
           
-          // Folder: Desa_NamaDesa_NamaKetua/
-          const folderName = `${villageName}_${userName.replace(/\s+/g, "_")}`;
-          const fileName = `${folderName}/${reportType}_${dateStr}_${timeStr}.pdf`;
-          if (isSupabaseEnabled && supabase) {
-            await supabase.storage.from("report-pdfs").upload(fileName, pdfBlob, {
-              contentType: "application/pdf",
-              upsert: true,
+          const fileName = `${reportType}_${dateStr}_${timeStr}.pdf`;
+          if (isConvexEnabled && convex && reportId && sessionId) {
+            const { uploadUrl } = await convex.mutation(anyApi.reportSubmissions.generateUploadUrl, {
+              sessionId,
+              reportId,
+            } as any);
+            const uploadRes = await fetch(uploadUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/pdf" },
+              body: pdfBlob,
             });
+            if (uploadRes.ok) {
+              const uploadJson = await uploadRes.json();
+              const storageId = uploadJson.storageId as string;
+              await convex.mutation(anyApi.reportSubmissions.attachPdf, {
+                sessionId,
+                reportId,
+                storageId,
+                fileName,
+              } as any);
+            }
           }
         } catch (err) {
           console.error("PDF upload error:", err);

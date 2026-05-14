@@ -1,6 +1,13 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import PenerimaanDesa from "@/pages/PenerimaanDesa";
+import { vi } from "vitest";
+
+vi.mock("@/components/FormPageHeader", () => {
+  return {
+    default: ({ children }: any) => <div>{children}</div>,
+  };
+});
 
 function seedLocalStorage() {
   localStorage.setItem("siskeudes_desa_profile", JSON.stringify({ namaDesa: "Desa Test" }));

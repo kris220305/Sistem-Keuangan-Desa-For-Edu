@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSiteSettings, getActiveSessions, heartbeat, getSessionId, upsertSession } from "@/lib/session-manager";
-import { supabase, isSupabaseEnabled } from "@/integrations/supabase/client";
-import { isConvexEnabled } from "@/integrations/convex/client";
+import { isConvexEnabled, convex } from "@/integrations/convex/client";
+import { anyApi } from "convex/server";
 import { Lock, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
       setChecking(false);
       return;
     }
-    if (!isSupabaseEnabled || !supabase) {
+    if (!isConvexEnabled || !convex) {
       setChecking(false);
       return;
     }
@@ -63,43 +63,14 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
       if (!hadVillage) return;
 
       try {
-        const { data, error } = await withTimeout(
-          supabase
-            .from("user_sessions")
-            .select("session_id, form_data, village_id")
-            .eq("session_id", sessionId)
-            .maybeSingle(),
+        const data = await withTimeout(
+          convex.query(anyApi.sessions.getBySessionId, { sessionId } as any),
           5000,
-          { data: null, error: null }
+          null,
         );
-
-        if (cancelled || error) return;
+        if (cancelled) return;
 
         if (!data) {
-          const hasServerSession = (() => {
-            try { return localStorage.getItem("siskeudes_has_server_session") === "true"; } catch { return false; }
-          })();
-
-          if (!hasServerSession) {
-            const userName = localStorage.getItem("siskeudes_user_name") || "";
-            const villageId = localStorage.getItem("siskeudes_selected_village") || "";
-            const villageName = (() => {
-              try { return JSON.parse(localStorage.getItem("siskeudes_desa_profile") || "{}").namaDesa || ""; } catch { return ""; }
-            })();
-            const workMode = localStorage.getItem("siskeudes_work_mode") || "individual";
-            const groupId = localStorage.getItem("siskeudes_group_id");
-            try {
-              await upsertSession({
-                user_name: userName,
-                village_id: villageId,
-                village_name: villageName,
-                work_mode: workMode,
-                group_id: groupId || null,
-              });
-            } catch (e) { void e; }
-            return;
-          }
-
           toast.error("Anda telah dikeluarkan dari sistem oleh admin.");
           wipeLocalUserData();
           setTimeout(() => { window.location.href = "/"; }, 800);
@@ -107,8 +78,9 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
         }
 
         const localState = localStorage.getItem("siskeudes_app_state");
-        const serverEmpty = !data.form_data ||
-          (typeof data.form_data === "object" && Object.keys(data.form_data as object).length === 0);
+        const serverFormData = (data as any).form_data;
+        const serverEmpty = !serverFormData ||
+          (typeof serverFormData === "object" && Object.keys(serverFormData as object).length === 0);
         const localHasData = !!localState && localState !== "{}" && localState.length > 4;
 
         if (serverEmpty && localHasData) {

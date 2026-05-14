@@ -90,7 +90,40 @@ export default defineSchema({
     lastActive: v.number(),
     createdAt: v.number(),
     formProgress: v.any(),
+    formData: v.optional(v.any()),
   })
     .index("by_sessionId", ["sessionId"])
-    .index("by_lastActive", ["lastActive"]),
+    .index("by_lastActive", ["lastActive"])
+    .index("by_groupId", ["groupId"])
+    .index("by_villageId", ["villageId"]),
+
+  siteSettings: defineTable({
+    key: v.string(),
+    isLocked: v.boolean(),
+    maxUsers: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  villageGroupLimits: defineTable({
+    villageId: v.string(),
+    villageName: v.string(),
+    minMembers: v.number(),
+    maxMembers: v.number(),
+    updatedAt: v.number(),
+  }).index("by_villageId", ["villageId"]),
+
+  reportSubmissions: defineTable({
+    groupId: v.optional(v.id("groups")),
+    sessionId: v.string(),
+    submittedBy: v.string(),
+    villageId: v.string(),
+    villageName: v.string(),
+    reportData: v.any(),
+    pdfStorageId: v.optional(v.id("_storage")),
+    pdfFileName: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_villageId_createdAt", ["villageId", "createdAt"])
+    .index("by_groupId_createdAt", ["groupId", "createdAt"]),
 });

@@ -148,6 +148,11 @@ export default function DataUmumDesa() {
       let gId: string;
       if (isConvexEnabled && convex) {
         toast.info("Menghubungkan ke server realtime…", { duration: 1200 });
+        const limit = await convex.query(anyApi.groupLimits.getForVillage, {
+          villageId: selectedVillage,
+          villageName: profile.namaDesa,
+        } as any);
+        const maxMembers = (limit as any)?.max_members ? Number((limit as any).max_members) : 50;
         const res = await Promise.race([
           convex.mutation(anyApi.groups.joinGroup, {
             villageId: selectedVillage,
@@ -155,7 +160,7 @@ export default function DataUmumDesa() {
             userName,
             sessionId,
             preferredGroupId: preferredGroupId ? (preferredGroupId as never) : undefined,
-            maxMembers: 50,
+            maxMembers,
           }),
           new Promise<never>((_, reject) =>
             setTimeout(
