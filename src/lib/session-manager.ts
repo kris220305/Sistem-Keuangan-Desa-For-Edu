@@ -2,6 +2,7 @@ import { convex, isConvexEnabled } from "@/integrations/convex/client";
 import { anyApi } from "convex/server";
 
 const SESSION_KEY = "siskeudes_session_id";
+const HAS_CONVEX_SESSION_KEY = "siskeudes_has_convex_session";
 const DEFAULT_MAX_GROUP_MEMBERS = 20;
 const DEFAULT_MIN_GROUP_MEMBERS = 1;
 
@@ -107,6 +108,7 @@ export async function upsertSession(data: {
       formProgress: data.form_progress,
       formData: data.form_data,
     });
+    try { localStorage.setItem(HAS_CONVEX_SESSION_KEY, "true"); } catch {}
   } catch {}
 }
 
@@ -138,8 +140,13 @@ export async function heartbeat() {
         workMode,
         groupId: groupId ? (groupId as never) : undefined,
       });
+      try { localStorage.setItem(HAS_CONVEX_SESSION_KEY, "true"); } catch {}
     } catch {}
   }
+}
+
+export function hasConvexServerSession(): boolean {
+  try { return localStorage.getItem(HAS_CONVEX_SESSION_KEY) === "true"; } catch { return false; }
 }
 
 export async function getSiteSettings() {

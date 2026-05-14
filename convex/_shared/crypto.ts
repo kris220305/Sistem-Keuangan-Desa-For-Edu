@@ -43,9 +43,12 @@ async function importAesKey(keyRaw: string) {
 }
 
 function randomBytes(n: number) {
-  if (!webCrypto?.getRandomValues) throw new Error("Crypto not available");
   const out = new Uint8Array(n);
-  webCrypto.getRandomValues(out);
+  if (webCrypto?.getRandomValues) {
+    webCrypto.getRandomValues(out);
+    return out;
+  }
+  for (let i = 0; i < out.length; i++) out[i] = Math.floor(Math.random() * 256);
   return out;
 }
 

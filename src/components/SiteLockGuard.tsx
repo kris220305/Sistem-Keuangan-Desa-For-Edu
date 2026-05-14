@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSiteSettings, getActiveSessions, heartbeat, getSessionId, upsertSession } from "@/lib/session-manager";
+import { getSiteSettings, getActiveSessions, heartbeat, getSessionId, upsertSession, hasConvexServerSession } from "@/lib/session-manager";
 import { isConvexEnabled, convex } from "@/integrations/convex/client";
 import { anyApi } from "convex/server";
 import { Lock, KeyRound } from "lucide-react";
@@ -71,6 +71,26 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
         if (cancelled) return;
 
         if (!data) {
+          if (!hasConvexServerSession()) {
+            const userName = localStorage.getItem("siskeudes_user_name") || "";
+            const villageId = localStorage.getItem("siskeudes_selected_village") || "";
+            const villageName = (() => {
+              try { return JSON.parse(localStorage.getItem("siskeudes_desa_profile") || "{}").namaDesa || ""; } catch { return ""; }
+            })();
+            const workMode = localStorage.getItem("siskeudes_work_mode") || "individual";
+            const groupId = localStorage.getItem("siskeudes_group_id");
+            try {
+              await upsertSession({
+                user_name: userName,
+                village_id: villageId,
+                village_name: villageName,
+                work_mode: workMode,
+                group_id: groupId || null,
+              });
+            } catch {}
+            return;
+          }
+
           toast.error("Anda telah dikeluarkan dari sistem oleh admin.");
           wipeLocalUserData();
           setTimeout(() => { window.location.href = "/"; }, 800);

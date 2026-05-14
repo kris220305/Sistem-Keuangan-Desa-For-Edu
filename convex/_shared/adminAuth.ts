@@ -1,3 +1,5 @@
+import { ConvexError } from "convex/values";
+
 const webCrypto = (globalThis as any).crypto;
 
 function bytesToHex(bytes: Uint8Array) {
@@ -7,7 +9,7 @@ function bytesToHex(bytes: Uint8Array) {
 }
 
 export async function hashAdminToken(token: string) {
-  if (!webCrypto?.subtle) throw new Error("Crypto not available");
+  if (!webCrypto?.subtle) throw new ConvexError("Server belum siap (crypto tidak tersedia)");
   const data = new TextEncoder().encode(token);
   const hash = await webCrypto.subtle.digest("SHA-256", data);
   return bytesToHex(new Uint8Array(hash));
@@ -19,9 +21,9 @@ export async function assertAdmin(db: any, adminToken: string) {
     .query("adminSessions")
     .withIndex("by_tokenHash", (q: any) => q.eq("tokenHash", tokenHash))
     .first();
-  if (!row) throw new Error("Insufficient permissions");
+  if (!row) throw new ConvexError("Insufficient permissions");
   if ((row as { expiresAt?: number }).expiresAt && (row as { expiresAt: number }).expiresAt < Date.now()) {
-    throw new Error("Insufficient permissions");
+    throw new ConvexError("Insufficient permissions");
   }
   return row;
 }
