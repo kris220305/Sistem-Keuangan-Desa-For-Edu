@@ -76,12 +76,13 @@ export const upsert = mutationGeneric({
 
 export const getBySessionId = queryGeneric({
   args: { sessionId: v.string() },
-  handler: async ({ db }, { sessionId }) => {
+  handler: async ({ db, storage }, { sessionId }) => {
     const s = await db
       .query("userSessions")
       .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
       .unique();
     if (!s) return null;
+    const screenshotUrl = (s as any).latestScreenshotStorageId ? await storage.getUrl((s as any).latestScreenshotStorageId) : null;
     return {
       id: s._id,
       session_id: s.sessionId,
@@ -94,6 +95,8 @@ export const getBySessionId = queryGeneric({
       form_data: (s.formData || null) as any,
       work_mode: s.workMode,
       group_id: s.groupId,
+      screenshot_url: screenshotUrl,
+      screenshot_updated_at: (s as any).latestScreenshotUpdatedAt ? new Date((s as any).latestScreenshotUpdatedAt).toISOString() : null,
     };
   },
 });
@@ -126,7 +129,7 @@ export const clearFormProgress = mutationGeneric({
 
 export const listActive = queryGeneric({
   args: { adminToken: v.string(), minutesThreshold: v.optional(v.number()) },
-  handler: async ({ db }, { adminToken, minutesThreshold }) => {
+  handler: async ({ db, storage }, { adminToken, minutesThreshold }) => {
     await assertAdmin(db, adminToken);
     const mins = Math.max(1, Math.floor(minutesThreshold ?? 5));
     const cutoff = Date.now() - mins * 60 * 1000;
@@ -136,18 +139,26 @@ export const listActive = queryGeneric({
       .withIndex("by_lastActive", (q) => q.gt("lastActive", cutoff))
       .order("desc")
       .take(500);
-    return rows.map((s) => ({
-      id: s._id,
-      session_id: s.sessionId,
-      user_name: s.userName,
-      village_id: s.villageId,
-      village_name: s.villageName,
-      last_active: new Date(s.lastActive).toISOString(),
-      created_at: new Date(s.createdAt).toISOString(),
-      form_progress: (s.formProgress || {}) as Record<string, boolean>,
-      work_mode: s.workMode,
-      group_id: s.groupId,
-    }));
+    const out: any[] = [];
+    for (const s of rows) {
+      const sid = (s as any).latestScreenshotStorageId as any;
+      const url = sid ? await storage.getUrl(sid) : null;
+      out.push({
+        id: s._id,
+        session_id: s.sessionId,
+        user_name: s.userName,
+        village_id: s.villageId,
+        village_name: s.villageName,
+        last_active: new Date(s.lastActive).toISOString(),
+        created_at: new Date(s.createdAt).toISOString(),
+        form_progress: (s.formProgress || {}) as Record<string, boolean>,
+        work_mode: s.workMode,
+        group_id: s.groupId,
+        screenshot_url: url,
+        screenshot_updated_at: (s as any).latestScreenshotUpdatedAt ? new Date((s as any).latestScreenshotUpdatedAt).toISOString() : null,
+      });
+    }
+    return out;
   },
 });
 
@@ -182,7 +193,7 @@ export const listAll = queryGeneric({
     limit: v.optional(v.number()),
     paginationToken: v.optional(v.string()),
   },
-  handler: async ({ db }, { adminToken, limit, paginationToken }) => {
+  handler: async ({ db, storage }, { adminToken, limit, paginationToken }) => {
     await assertAdmin(db, adminToken);
     const numItems = normalizeLimit(limit);
     const res = await db
@@ -194,18 +205,26 @@ export const listAll = queryGeneric({
         numItems,
       });
     return {
-      items: res.page.map((s: any) => ({
-        id: s._id,
-        session_id: s.sessionId,
-        user_name: s.userName,
-        village_id: s.villageId,
-        village_name: s.villageName,
-        last_active: new Date(s.lastActive).toISOString(),
-        created_at: new Date(s.createdAt).toISOString(),
-        form_progress: (s.formProgress || {}) as Record<string, boolean>,
-        work_mode: s.workMode,
-        group_id: s.groupId,
-      })),
+      items: await Promise.all(
+        res.page.map(async (s: any) => {
+          const sid = s.latestScreenshotStorageId as any;
+          const url = sid ? await storage.getUrl(sid) : null;
+          return {
+            id: s._id,
+            session_id: s.sessionId,
+            user_name: s.userName,
+            village_id: s.villageId,
+            village_name: s.villageName,
+            last_active: new Date(s.lastActive).toISOString(),
+            created_at: new Date(s.createdAt).toISOString(),
+            form_progress: (s.formProgress || {}) as Record<string, boolean>,
+            work_mode: s.workMode,
+            group_id: s.groupId,
+            screenshot_url: url,
+            screenshot_updated_at: s.latestScreenshotUpdatedAt ? new Date(s.latestScreenshotUpdatedAt).toISOString() : null,
+          };
+        }),
+      ),
       paginationToken: res.continueCursor,
       done: res.isDone,
     };

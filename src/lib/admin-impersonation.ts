@@ -175,7 +175,7 @@ export function getImpersonation(): ImpersonationInfo | null {
 }
 
 /**
- * Refresh the impersonated user's data from Supabase. Used by the live banner.
+ * Refresh the impersonated user's data from Convex. Used by the live banner.
  */
 export async function refreshImpersonatedData(): Promise<{ ok: boolean; changed: boolean }> {
   const info = getImpersonation();

@@ -7,7 +7,7 @@ Pada modul **Penerimaan Desa (Tunai)**, user dapat:
 - **Simpan**: menyimpan transaksi penerimaan tunai tanpa mencatat ke menu Mutasi Kas.
 - **Simpan + Mutasi**: menyimpan transaksi penerimaan tunai dan langsung mencatat ke menu Mutasi Kas sebagai transaksi **Masuk (Tunai)**, tanpa dialog konfirmasi tambahan.
 
-Mutasi disimpan di localStorage dan ikut disinkronkan ke mode kelompok (Convex) / sesi individual (Supabase) sebagai `mutasiKas` di payload state.
+Mutasi disimpan di localStorage dan ikut disinkronkan ke mode kelompok (Convex) / sesi individual (Convex) sebagai `mutasiKas` di payload state.
 
 ## Data yang Terlibat
 
@@ -81,11 +81,11 @@ Payload:
   - AppState (koleksi-koleksi seperti `penerimaan`, `spp`, `pencairan`, dst)
   - `mutasiKas: MutasiKasItem[]`
 
-### Mode Individual (Supabase)
+### Mode Individual (Convex)
 
 Upsert sesi:
 
-- `upsertSession({ form_data: payload })`
+- `upsertSession({ form_data: payload })` (diterapkan lewat Convex `sessions.upsert`)
 
 Payload:
 

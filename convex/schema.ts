@@ -91,6 +91,8 @@ export default defineSchema({
     createdAt: v.number(),
     formProgress: v.any(),
     formData: v.optional(v.any()),
+    latestScreenshotStorageId: v.optional(v.id("_storage")),
+    latestScreenshotUpdatedAt: v.optional(v.number()),
   })
     .index("by_sessionId", ["sessionId"])
     .index("by_lastActive", ["lastActive"])

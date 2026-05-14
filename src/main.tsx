@@ -41,19 +41,12 @@ const MissingEnv = ({ name }: { name: string }) => (
   </div>
 );
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 const CONVEX_URL = import.meta.env.VITE_CONVEX_URL as string | undefined;
 
-const hasSupabase = !!SUPABASE_URL && !!SUPABASE_KEY;
 const hasConvex = !!CONVEX_URL;
 
-if (!hasSupabase && !hasConvex) {
-  root.render(<MissingEnv name="VITE_CONVEX_URL (atau VITE_SUPABASE_URL + VITE_SUPABASE_PUBLISHABLE_KEY)" />);
-} else if (SUPABASE_URL && !SUPABASE_KEY && !hasConvex) {
-  root.render(<MissingEnv name="VITE_SUPABASE_PUBLISHABLE_KEY" />);
-} else if (!SUPABASE_URL && SUPABASE_KEY && !hasConvex) {
-  root.render(<MissingEnv name="VITE_SUPABASE_URL" />);
+if (!hasConvex) {
+  root.render(<MissingEnv name="VITE_CONVEX_URL" />);
 } else {
   import("./App.tsx")
     .then(({ default: App }) => {

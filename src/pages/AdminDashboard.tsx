@@ -24,7 +24,6 @@ import {
   getSubmittedReports, deleteReport, deleteAllReports, deleteReportPdf, deleteAllReportPdfs,
   getAllVillageGroupLimits, upsertVillageGroupLimit, type VillageGroupLimit,
 } from "@/lib/session-manager";
-import { getScreenshotUrl } from "@/lib/screenshot-capture";
 import { startImpersonation } from "@/lib/admin-impersonation";
 import { villageProfiles } from "@/data/village-profiles";
 import { convex, isConvexEnabled } from "@/integrations/convex/client";
@@ -662,10 +661,10 @@ export default function AdminDashboard() {
                           <span className="text-[hsl(0,0%,50%)] text-[10px]">{s.village_name}</span>
                         </div>
                         <div className="aspect-video bg-[hsl(0,0%,10%)] relative">
-                          {getScreenshotUrl(s.session_id) ? (
+                          {(s as any).screenshot_url ? (
                             <img
                               key={screenshotKey}
-                              src={`${getScreenshotUrl(s.session_id)}?t=${screenshotKey}`}
+                              src={`${(s as any).screenshot_url}?t=${screenshotKey}`}
                               alt={`Screenshot ${s.user_name}`}
                               className="w-full h-full object-contain"
                               onError={(e) => {
@@ -939,10 +938,10 @@ export default function AdminDashboard() {
                 </DialogDescription>
               </DialogHeader>
               <div className="bg-[hsl(0,0%,5%)] rounded-lg overflow-hidden">
-                {getScreenshotUrl(monitorUser.session_id) ? (
+                {(monitorUser as any).screenshot_url ? (
                   <img
                     key={screenshotKey}
-                    src={`${getScreenshotUrl(monitorUser.session_id)}?t=${screenshotKey}`}
+                    src={`${(monitorUser as any).screenshot_url}?t=${screenshotKey}`}
                     alt={`Screenshot ${monitorUser.user_name}`}
                     className="w-full object-contain max-h-[60vh]"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -952,7 +951,6 @@ export default function AdminDashboard() {
                     <div className="text-center">
                       <Camera size={36} className="mx-auto mb-2 opacity-30" />
                       <p>Belum ada screenshot</p>
-                      <p className="mt-1 text-[10px] text-[hsl(0,0%,45%)]">Fitur ini membutuhkan Supabase Storage bucket "screenshots".</p>
                     </div>
                   </div>
                 )}

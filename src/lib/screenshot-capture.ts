@@ -1,6 +1,7 @@
 import html2canvas from "html2canvas";
-import { supabase, isSupabaseEnabled } from "@/integrations/supabase/client";
 import { getSessionId } from "@/lib/session-manager";
+import { convex, isConvexEnabled } from "@/integrations/convex/client";
+import { anyApi } from "convex/server";
 
 const CONSENT_KEY = "siskeudes_screen_share_consent";
 
@@ -16,7 +17,7 @@ let captureInterval: ReturnType<typeof setInterval> | null = null;
 
 export async function captureAndUpload() {
   if (!hasScreenShareConsent()) return;
-  if (!isSupabaseEnabled || !supabase) return;
+  if (!isConvexEnabled || !convex) return;
   
   try {
     const canvas = await html2canvas(document.body, {
@@ -32,12 +33,17 @@ export async function captureAndUpload() {
     });
     
     const sessionId = getSessionId();
-    const fileName = `${sessionId}/latest.jpg`;
-    
-    await supabase.storage.from("screenshots").upload(fileName, blob, {
-      upsert: true,
-      contentType: "image/jpeg",
+    const { uploadUrl } = await convex.mutation(anyApi.screenshots.generateUploadUrl, { sessionId } as any);
+    const uploadRes = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": "image/jpeg" },
+      body: blob,
     });
+    if (!uploadRes.ok) return;
+    const uploadJson = await uploadRes.json();
+    const storageId = uploadJson.storageId as string;
+    if (!storageId) return;
+    await convex.mutation(anyApi.screenshots.attachLatest, { sessionId, storageId } as any);
   } catch {
     // Silent fail
   }
@@ -56,10 +62,4 @@ export function stopScreenCapture() {
     clearInterval(captureInterval);
     captureInterval = null;
   }
-}
-
-export function getScreenshotUrl(sessionId: string): string {
-  if (!isSupabaseEnabled || !supabase) return "";
-  const { data } = supabase.storage.from("screenshots").getPublicUrl(`${sessionId}/latest.jpg`);
-  return data.publicUrl;
 }
