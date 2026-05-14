@@ -206,13 +206,64 @@ export async function getActiveSessions(minutesThreshold = 5) {
   if (isConvexEnabled && convex) {
     try {
       const adminToken = getAdminToken();
-      if (!adminToken) return [];
-      return await getConvex().query(anyApi.sessions.listActive, { adminToken, minutesThreshold } as any);
+      if (adminToken) {
+        return await getConvex().query(anyApi.sessions.listActive, { adminToken, minutesThreshold } as any);
+      }
+      return await getConvex().query(anyApi.sessions.listActivePublic, { minutesThreshold } as any);
     } catch {
       return [];
     }
   }
   return [];
+}
+
+export async function deleteAllSessions() {
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  const adminToken = getAdminToken();
+  if (!adminToken) throw new Error("Admin token tidak tersedia");
+  await getConvex().mutation(anyApi.sessions.removeAll, { adminToken } as any);
+}
+
+export async function resetUserProgress(sessionId: string) {
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  const adminToken = getAdminToken();
+  if (!adminToken) throw new Error("Admin token tidak tersedia");
+  await getConvex().mutation(anyApi.sessions.clearFormProgress, { adminToken, sessionId } as any);
+}
+
+export async function resetAllProgress() {
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  const adminToken = getAdminToken();
+  if (!adminToken) throw new Error("Admin token tidak tersedia");
+  await getConvex().mutation(anyApi.sessions.clearAllFormProgress, { adminToken } as any);
+}
+
+export async function deleteReport(id: string) {
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  const adminToken = getAdminToken();
+  if (!adminToken) throw new Error("Admin token tidak tersedia");
+  await getConvex().mutation(anyApi.reportSubmissions.remove, { adminToken, id: id as never } as any);
+}
+
+export async function deleteAllReports() {
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  const adminToken = getAdminToken();
+  if (!adminToken) throw new Error("Admin token tidak tersedia");
+  await getConvex().mutation(anyApi.reportSubmissions.removeAll, { adminToken } as any);
+}
+
+export async function deleteReportPdf(id: string) {
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  const adminToken = getAdminToken();
+  if (!adminToken) throw new Error("Admin token tidak tersedia");
+  await getConvex().mutation(anyApi.reportSubmissions.deletePdf, { adminToken, id: id as never } as any);
+}
+
+export async function deleteAllReportPdfs() {
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  const adminToken = getAdminToken();
+  if (!adminToken) throw new Error("Admin token tidak tersedia");
+  await getConvex().mutation(anyApi.reportSubmissions.deleteAllPdfs, { adminToken } as any);
 }
 
 export async function trackFormProgress(formKey: string) {

@@ -97,6 +97,85 @@ export const remove = mutationGeneric({
   },
 });
 
+export const removeAll = mutationGeneric({
+  args: { adminToken: v.string() },
+  handler: async ({ db, storage }, { adminToken }) => {
+    const admin = await assertAdmin(db, adminToken);
+    const rows = await db.query("reportSubmissions").collect();
+    for (const r of rows) {
+      if (r.pdfStorageId) {
+        try { await storage.delete(r.pdfStorageId); } catch {}
+      }
+      await db.delete(r._id);
+    }
+    try {
+      await writeAuditLog(db, {
+        actorId: `admin:${(admin as any).tokenHash}`,
+        actionType: "reportSubmissions.removeAll",
+        targetType: "reportSubmissions",
+        targetId: "*",
+        fieldName: "deleted",
+        oldValue: { count: rows.length },
+        newValue: null,
+      });
+    } catch {}
+    return true;
+  },
+});
+
+export const deletePdf = mutationGeneric({
+  args: { adminToken: v.string(), id: v.id("reportSubmissions") },
+  handler: async ({ db, storage }, { adminToken, id }) => {
+    const admin = await assertAdmin(db, adminToken);
+    const row = await db.get(id);
+    if (!row) return true;
+    if (row.pdfStorageId) {
+      try { await storage.delete(row.pdfStorageId); } catch {}
+    }
+    await db.patch(id, { pdfStorageId: undefined, pdfFileName: undefined });
+    try {
+      await writeAuditLog(db, {
+        actorId: `admin:${(admin as any).tokenHash}`,
+        actionType: "reportSubmissions.deletePdf",
+        targetType: "reportSubmissions",
+        targetId: String(id),
+        fieldName: "pdf",
+        oldValue: { pdfStorageId: String(row.pdfStorageId || ""), pdfFileName: row.pdfFileName || null },
+        newValue: null,
+      });
+    } catch {}
+    return true;
+  },
+});
+
+export const deleteAllPdfs = mutationGeneric({
+  args: { adminToken: v.string() },
+  handler: async ({ db, storage }, { adminToken }) => {
+    const admin = await assertAdmin(db, adminToken);
+    const rows = await db.query("reportSubmissions").collect();
+    let deleted = 0;
+    for (const r of rows) {
+      if (r.pdfStorageId) {
+        try { await storage.delete(r.pdfStorageId); } catch {}
+        await db.patch(r._id, { pdfStorageId: undefined, pdfFileName: undefined });
+        deleted += 1;
+      }
+    }
+    try {
+      await writeAuditLog(db, {
+        actorId: `admin:${(admin as any).tokenHash}`,
+        actionType: "reportSubmissions.deleteAllPdfs",
+        targetType: "reportSubmissions",
+        targetId: "*",
+        fieldName: "pdf",
+        oldValue: { count: deleted },
+        newValue: null,
+      });
+    } catch {}
+    return true;
+  },
+});
+
 export const generateUploadUrl = mutationGeneric({
   args: { sessionId: v.string(), reportId: v.id("reportSubmissions") },
   handler: async ({ db, storage }, { sessionId, reportId }) => {
@@ -123,4 +202,3 @@ export const attachPdf = mutationGeneric({
     return true;
   },
 });
-

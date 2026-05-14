@@ -19,10 +19,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getAllSessions, getActiveSessions, getSiteSettings, updateSiteSettings, deleteSession, getSubmittedReports,
+  getAllSessions, getActiveSessions, getSiteSettings, updateSiteSettings, deleteSession, deleteAllSessions,
+  resetUserProgress, resetAllProgress,
+  getSubmittedReports, deleteReport, deleteAllReports, deleteReportPdf, deleteAllReportPdfs,
   getAllVillageGroupLimits, upsertVillageGroupLimit, type VillageGroupLimit,
 } from "@/lib/session-manager";
-import { supabase, isSupabaseEnabled } from "@/integrations/supabase/client";
 import { getScreenshotUrl } from "@/lib/screenshot-capture";
 import { startImpersonation } from "@/lib/admin-impersonation";
 import { villageProfiles } from "@/data/village-profiles";
@@ -69,25 +70,17 @@ interface ReportRow {
   village_id: string;
   village_name: string;
   report_data: Record<string, unknown>;
-  created_at: string;
-}
-
-interface PdfFile {
-  name: string;
-  fullPath: string;
-  url: string;
-  folder: string;
+  pdf_url?: string | null;
+  pdf_file_name?: string | null;
   created_at: string;
 }
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const canUseSupabase = isSupabaseEnabled && !!supabase;
   const canUseConvex = isConvexEnabled && !!convex;
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [activeSessions, setActiveSessions] = useState<SessionRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
-  const [pdfFiles, setPdfFiles] = useState<PdfFile[]>([]);
   const [siteSettings, setSiteSettings] = useState<{ is_locked: boolean; max_users: number | null }>({
     is_locked: false, max_users: 0,
   });
@@ -105,6 +98,8 @@ export default function AdminDashboard() {
     description: string;
     action: () => Promise<void>;
   } | null>(null);
+
+  const pdfCount = reports.filter((r) => !!r.pdf_url).length;
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -132,45 +127,16 @@ export default function AdminDashboard() {
       });
       setVillageLimits(map);
 
-      if (canUseSupabase) {
-        try {
-          const { data: folders } = await supabase!.storage.from("report-pdfs").list("", { limit: 100 });
-          if (folders) {
-            const allPdfs: PdfFile[] = [];
-            for (const folder of folders) {
-              if (folder.id === null && folder.name === ".emptyFolderPlaceholder") continue;
-              const { data: files } = await supabase!.storage.from("report-pdfs").list(folder.name, { limit: 50 });
-              if (files) {
-                for (const f of files) {
-                  if (f.name.endsWith(".pdf")) {
-                    const path = `${folder.name}/${f.name}`;
-                    const { data: urlData } = supabase!.storage.from("report-pdfs").getPublicUrl(path);
-                    allPdfs.push({
-                      name: f.name, fullPath: path, url: urlData.publicUrl,
-                      folder: folder.name, created_at: f.created_at || "",
-                    });
-                  }
-                }
-              }
-            }
-            allPdfs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            setPdfFiles(allPdfs);
-          }
-        } catch { /* ignore */ }
-      } else {
-        setPdfFiles([]);
-      }
     } catch (e) {
       toast.error("Gagal memuat data admin. Coba refresh.");
       setSessions([]);
       setActiveSessions([]);
       setReports([]);
-      setPdfFiles([]);
     } finally {
       setLoading(false);
     }
 
-  }, [canUseSupabase]);
+  }, []);
 
   useEffect(() => {
     const token = (() => {
@@ -250,28 +216,7 @@ export default function AdminDashboard() {
       title: `Kick User: ${s.user_name || "—"}`,
       description: `User "${s.user_name || s.session_id}" akan langsung dikeluarkan dari sistem dalam beberapa detik. Session, progress, dan data form mereka dihapus permanen — mereka harus membuka link lagi untuk masuk kembali.`,
       action: async () => {
-        if (!canUseSupabase) {
-          toast.error("Fitur kick admin membutuhkan Supabase (untuk memaksa logout user).");
-          return;
-        }
-        // 1. Remove from groups first (FK)
-        if (s.group_id) {
-          await supabase!.from("group_members").delete().eq("session_id", s.session_id);
-        }
-        // 2. Delete the session row → triggers kick-detection on user side
-        const { error } = await supabase
-          .from("user_sessions")
-          .delete()
-          .eq("session_id", s.session_id);
-        if (error) {
-          toast.error(`Gagal kick user: ${error.message}`);
-          return;
-        }
-        // 3. Cleanup screenshots
-        try {
-          await supabase!.storage.from("screenshots").remove([`${s.session_id}.png`]);
-        } catch { /* ignore */ }
-
+        await deleteSession(s.session_id);
         toast.success(`User "${s.user_name || s.session_id}" dikeluarkan. User akan otomatis logout dalam ±4 detik.`);
         refresh();
       },
@@ -283,34 +228,7 @@ export default function AdminDashboard() {
       title: "Kick Semua User",
       description: `PERINGATAN: Semua ${sessions.length} user akan langsung dikeluarkan dari sistem dalam beberapa detik. Session, progress, dan data form mereka akan hilang permanen.`,
       action: async () => {
-        if (!canUseSupabase) {
-          toast.error("Fitur kick massal membutuhkan Supabase.");
-          return;
-        }
-        // Bulk delete group members + groups + sessions
-        const { error: gmErr } = await supabase
-          .from("group_members")
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-        const { error: gErr } = await supabase
-          .from("groups")
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-        const { error: sErr } = await supabase
-          .from("user_sessions")
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-
-        if (gmErr || gErr || sErr) {
-          toast.error(`Gagal hapus sebagian data: ${(sErr || gErr || gmErr)?.message}`);
-        }
-
-        // Cleanup all screenshots
-        try {
-          const paths = sessions.map((x) => `${x.session_id}.png`);
-          if (paths.length > 0) await supabase!.storage.from("screenshots").remove(paths);
-        } catch { /* ignore */ }
-
+        await deleteAllSessions();
         toast.success(`${sessions.length} user dikeluarkan. Mereka akan otomatis logout.`);
         refresh();
       },
@@ -322,18 +240,7 @@ export default function AdminDashboard() {
       title: "Hapus Semua Laporan",
       description: `PERINGATAN: Ini akan menghapus semua ${reports.length} laporan yang telah dikirim. Tindakan ini tidak bisa dibatalkan.`,
       action: async () => {
-        if (!canUseSupabase) {
-          toast.error("Fitur laporan admin membutuhkan Supabase.");
-          return;
-        }
-        const { error } = await supabase
-          .from("report_submissions")
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-        if (error) {
-          toast.error(`Gagal: ${error.message}`);
-          return;
-        }
+        await deleteAllReports();
         toast.success(`${reports.length} laporan berhasil dihapus`);
         refresh();
       },
@@ -345,11 +252,7 @@ export default function AdminDashboard() {
       title: "Hapus Laporan",
       description: `Hapus laporan dari "${r.village_name}" yang dikirim oleh "${r.submitted_by}"?`,
       action: async () => {
-        if (!canUseSupabase) {
-          toast.error("Fitur laporan admin membutuhkan Supabase.");
-          return;
-        }
-        await supabase!.from("report_submissions").delete().eq("id", r.id);
+        await deleteReport(r.id);
         toast.success("Laporan berhasil dihapus");
         refresh();
       },
@@ -359,17 +262,22 @@ export default function AdminDashboard() {
   const handleDeleteAllPdfs = () => {
     setConfirmAction({
       title: "Hapus Semua PDF",
-      description: `PERINGATAN: Ini akan menghapus semua ${pdfFiles.length} file PDF laporan. Tindakan ini tidak bisa dibatalkan.`,
+      description: `PERINGATAN: Ini akan menghapus semua file PDF laporan yang tersimpan. Tindakan ini tidak bisa dibatalkan.`,
       action: async () => {
-        if (!canUseSupabase) {
-          toast.error("Fitur PDF admin membutuhkan Supabase Storage.");
-          return;
-        }
-        const paths = pdfFiles.map((p) => p.fullPath);
-        if (paths.length > 0) {
-          await supabase!.storage.from("report-pdfs").remove(paths);
-        }
+        await deleteAllReportPdfs();
         toast.success("Semua PDF berhasil dihapus");
+        refresh();
+      },
+    });
+  };
+
+  const handleDeleteReportPdf = (r: ReportRow) => {
+    setConfirmAction({
+      title: "Hapus PDF Laporan",
+      description: `Hapus PDF untuk laporan dari "${r.village_name}"? Data laporan tetap ada.`,
+      action: async () => {
+        await deleteReportPdf(r.id);
+        toast.success("PDF berhasil dihapus");
         refresh();
       },
     });
@@ -380,22 +288,7 @@ export default function AdminDashboard() {
       title: `Reset Progress: ${s.user_name || "—"}`,
       description: `Progress dan SEMUA data form (Penganggaran, Penatausahaan, Pembukuan, Laporan) milik user "${s.user_name}" akan direset ke kosong. Aplikasi user akan otomatis dimuat ulang dalam beberapa detik.`,
       action: async () => {
-        if (!canUseSupabase) {
-          toast.error("Reset progress via admin membutuhkan Supabase.");
-          return;
-        }
-        const { error } = await supabase
-          .from("user_sessions")
-          .update({
-            form_progress: {} as never,
-            form_data: {} as never,
-            last_active: new Date().toISOString(),
-          })
-          .eq("session_id", s.session_id);
-        if (error) {
-          toast.error(`Gagal reset: ${error.message}`);
-          return;
-        }
+        await resetUserProgress(s.session_id);
         toast.success(`Progress "${s.user_name}" berhasil direset. User akan refresh otomatis.`);
         refresh();
       },
@@ -407,23 +300,7 @@ export default function AdminDashboard() {
       title: "Reset Semua Progress",
       description: `PERINGATAN: Semua progress dan SELURUH data form (Penganggaran, Penatausahaan, Pembukuan, Laporan) dari ${sessions.length} user akan dihapus total. Aplikasi mereka akan otomatis dimuat ulang. Tindakan ini tidak dapat dibatalkan.`,
       action: async () => {
-        if (!canUseSupabase) {
-          toast.error("Reset massal via admin membutuhkan Supabase.");
-          return;
-        }
-        // Single bulk update
-        const { error } = await supabase
-          .from("user_sessions")
-          .update({
-            form_progress: {} as never,
-            form_data: {} as never,
-            last_active: new Date().toISOString(),
-          })
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-        if (error) {
-          toast.error(`Gagal reset: ${error.message}`);
-          return;
-        }
+        await resetAllProgress();
         toast.success(`Progress ${sessions.length} user berhasil direset. Aplikasi user akan refresh otomatis.`);
         refresh();
       },
@@ -472,12 +349,21 @@ export default function AdminDashboard() {
   };
 
   const handleViewAsUser = async (s: SessionRow) => {
+    let formData: Record<string, unknown> | null = null;
+    if (canUseConvex) {
+      try {
+        const detail = await convex!.query(anyApi.sessions.getBySessionId, { sessionId: s.session_id } as any);
+        formData = ((detail as any)?.form_data as Record<string, unknown>) ?? null;
+      } catch {
+        formData = null;
+      }
+    }
     await startImpersonation({
       session_id: s.session_id,
       user_name: s.user_name,
       village_id: s.village_id,
       village_name: s.village_name,
-      form_data: (s.form_data as Record<string, unknown>) ?? null,
+      form_data: formData,
     });
     toast.success(`Memantau pekerjaan: ${s.user_name || "—"}`);
     // Send admin into the user UI starting from Data Umum
@@ -601,8 +487,8 @@ export default function AdminDashboard() {
                 <Trash2 size={13} /> Hapus Semua Laporan ({reports.length})
               </Button>
               <Button variant="destructive" size="sm" className="gap-1.5 text-xs" onClick={handleDeleteAllPdfs}
-                disabled={pdfFiles.length === 0}>
-                <Trash2 size={13} /> Hapus Semua PDF ({pdfFiles.length})
+                disabled={pdfCount === 0}>
+                <Trash2 size={13} /> Hapus Semua PDF ({pdfCount})
               </Button>
             </div>
           </CardContent>
@@ -621,7 +507,7 @@ export default function AdminDashboard() {
               <FileText size={14} className="mr-1" /> Laporan ({reports.length})
             </TabsTrigger>
             <TabsTrigger value="pdfs" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-white/60">
-              <Download size={14} className="mr-1" /> PDF ({pdfFiles.length})
+              <Download size={14} className="mr-1" /> PDF ({pdfCount})
             </TabsTrigger>
             <TabsTrigger value="kelompok" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-white/60">
               <Settings2 size={14} className="mr-1" /> Kelompok
@@ -732,15 +618,18 @@ export default function AdminDashboard() {
                           <span className="text-[hsl(0,0%,50%)] text-[10px]">{s.village_name}</span>
                         </div>
                         <div className="aspect-video bg-[hsl(0,0%,10%)] relative">
-                          <img key={screenshotKey}
-                            src={`${getScreenshotUrl(s.session_id)}?t=${screenshotKey}`}
-                            alt={`Screenshot ${s.user_name}`}
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                              (e.target as HTMLImageElement).parentElement!.querySelector(".no-ss")?.classList.remove("hidden");
-                            }}
-                          />
+                          {getScreenshotUrl(s.session_id) ? (
+                            <img
+                              key={screenshotKey}
+                              src={`${getScreenshotUrl(s.session_id)}?t=${screenshotKey}`}
+                              alt={`Screenshot ${s.user_name}`}
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = "none";
+                                (e.target as HTMLImageElement).parentElement!.querySelector(".no-ss")?.classList.remove("hidden");
+                              }}
+                            />
+                          ) : null}
                           <div className="no-ss hidden absolute inset-0 flex items-center justify-center text-[hsl(0,0%,40%)] text-xs">
                             <div className="text-center">
                               <Camera size={24} className="mx-auto mb-1 opacity-30" />
@@ -825,7 +714,7 @@ export default function AdminDashboard() {
                   <CardTitle className="text-white text-base flex items-center gap-2">
                     <Download size={18} /> File PDF Laporan Keuangan
                   </CardTitle>
-                  {pdfFiles.length > 0 && (
+                  {pdfCount > 0 && (
                     <Button variant="destructive" size="sm" className="text-[10px] gap-1 h-7" onClick={handleDeleteAllPdfs}>
                       <Trash2 size={12} /> Hapus Semua PDF
                     </Button>
@@ -833,93 +722,49 @@ export default function AdminDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                {pdfFiles.length === 0 ? (
+                {pdfCount === 0 ? (
                   <p className="text-sm text-[hsl(0,0%,50%)] text-center py-8">Belum ada PDF laporan yang dikirim</p>
                 ) : (
-                  <div className="space-y-4">
-                    {(() => {
-                      const folderMap = new Map<string, PdfFile[]>();
-                      pdfFiles.forEach((pdf) => {
-                        const existing = folderMap.get(pdf.folder) || [];
-                        existing.push(pdf);
-                        folderMap.set(pdf.folder, existing);
-                      });
-                      return Array.from(folderMap.entries()).map(([folderName, files]) => {
-                        const displayName = folderName.replace(/_/g, " ");
-                        return (
-                          <div key={folderName} className="border border-[hsl(152,30%,22%)] rounded-lg overflow-hidden">
-                            <div className="bg-[hsl(152,30%,18%)] px-4 py-2.5 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <FileText size={16} className="text-accent" />
-                                <span className="text-white text-sm font-medium">{displayName}</span>
-                                <span className="text-[hsl(0,0%,50%)] text-[10px] ml-2">({files.length} file)</span>
-                              </div>
-                              <Button variant="ghost" size="sm"
-                                onClick={async () => {
-                                  for (const f of files) {
-                                    await supabase!.storage.from("report-pdfs").remove([f.fullPath]);
-                                  }
-                                  toast.success(`Folder "${displayName}" berhasil dihapus`);
-                                  refresh();
-                                }}
-                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-[10px] h-6">
-                                <Trash2 size={12} className="mr-1" /> Hapus Folder
-                              </Button>
-                            </div>
-                            <div className="divide-y divide-[hsl(152,30%,20%)]">
-                              {files.map((pdf, i) => {
-                                const reportLabel = pdf.name
-                                  .replace(".pdf", "").replace(/_/g, " ")
-                                  .replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1")
-                                  .replace(/(\d{4})$/, " $1");
-                                return (
-                                  <div key={i} className="flex items-center justify-between px-4 py-2.5 bg-[hsl(152,20%,14%)] hover:bg-[hsl(152,20%,16%)] transition-colors">
-                                    <div className="flex items-center gap-3">
-                                      <FileText size={16} className="text-red-400/70" />
-                                      <div>
-                                        <p className="text-white text-xs font-medium">{reportLabel}</p>
-                                        <p className="text-[hsl(0,0%,45%)] text-[10px]">
-                                          {pdf.created_at ? new Date(pdf.created_at).toLocaleString("id-ID") : "—"}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-1">
-                                      <Button variant="ghost" size="sm"
-                                        onClick={() => window.open(pdf.url, "_blank")}
-                                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 h-7 text-[10px] gap-1">
-                                        <Eye size={12} /> Lihat
-                                      </Button>
-                                      <Button variant="ghost" size="sm"
-                                        onClick={async () => {
-                                          try {
-                                            const res = await fetch(pdf.url);
-                                            const blob = await res.blob();
-                                            const blobUrl = URL.createObjectURL(blob);
-                                            const a = document.createElement("a");
-                                            a.href = blobUrl; a.download = pdf.name; a.click();
-                                            URL.revokeObjectURL(blobUrl);
-                                          } catch { toast.error("Gagal mengunduh file"); }
-                                        }}
-                                        className="text-green-400 hover:text-green-300 hover:bg-green-500/10 h-7 text-[10px] gap-1">
-                                        <Download size={12} /> Unduh
-                                      </Button>
-                                      <Button variant="ghost" size="sm"
-                                        onClick={async () => {
-                                          await supabase!.storage.from("report-pdfs").remove([pdf.fullPath]);
-                                          toast.success("File berhasil dihapus"); refresh();
-                                        }}
-                                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-7 w-7 p-0">
-                                        <Trash2 size={12} />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                  <div className="space-y-3">
+                    {reports.filter((r) => !!r.pdf_url).map((r) => (
+                      <div key={r.id} className="border border-[hsl(152,30%,22%)] rounded-lg p-4 bg-[hsl(152,20%,18%)]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-white font-medium text-sm truncate">{r.village_name || "—"}</p>
+                            <p className="text-[hsl(0,0%,55%)] text-xs mt-0.5">{r.pdf_file_name || "PDF Laporan"}</p>
+                            <p className="text-[hsl(0,0%,45%)] text-[10px] mt-1">{new Date(r.created_at).toLocaleString("id-ID")}</p>
                           </div>
-                        );
-                      });
-                    })()}
+                          <div className="flex gap-1 shrink-0">
+                            <Button variant="ghost" size="sm" onClick={() => r.pdf_url && window.open(r.pdf_url, "_blank")}
+                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 h-7 text-[10px] gap-1">
+                              <Eye size={12} /> Lihat
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={async () => {
+                              try {
+                                if (!r.pdf_url) return;
+                                const res = await fetch(r.pdf_url);
+                                const blob = await res.blob();
+                                const blobUrl = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = blobUrl;
+                                a.download = r.pdf_file_name || `laporan-${r.village_name || "desa"}.pdf`;
+                                a.click();
+                                URL.revokeObjectURL(blobUrl);
+                              } catch {
+                                toast.error("Gagal mengunduh file");
+                              }
+                            }}
+                              className="text-green-400 hover:text-green-300 hover:bg-green-500/10 h-7 text-[10px] gap-1">
+                              <Download size={12} /> Unduh
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteReportPdf(r)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-7 w-7 p-0" title="Hapus PDF">
+                              <Trash2 size={12} />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -1050,12 +895,23 @@ export default function AdminDashboard() {
                 </DialogDescription>
               </DialogHeader>
               <div className="bg-[hsl(0,0%,5%)] rounded-lg overflow-hidden">
-                <img key={screenshotKey}
-                  src={`${getScreenshotUrl(monitorUser.session_id)}?t=${screenshotKey}`}
-                  alt={`Screenshot ${monitorUser.user_name}`}
-                  className="w-full object-contain max-h-[60vh]"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
+                {getScreenshotUrl(monitorUser.session_id) ? (
+                  <img
+                    key={screenshotKey}
+                    src={`${getScreenshotUrl(monitorUser.session_id)}?t=${screenshotKey}`}
+                    alt={`Screenshot ${monitorUser.user_name}`}
+                    className="w-full object-contain max-h-[60vh]"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                ) : (
+                  <div className="w-full h-[50vh] flex items-center justify-center text-[hsl(0,0%,40%)] text-xs">
+                    <div className="text-center">
+                      <Camera size={36} className="mx-auto mb-2 opacity-30" />
+                      <p>Belum ada screenshot</p>
+                      <p className="mt-1 text-[10px] text-[hsl(0,0%,45%)]">Fitur ini membutuhkan Supabase Storage bucket "screenshots".</p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex justify-between items-center text-xs text-[hsl(0,0%,50%)]">
                 <span>Auto-refresh setiap 10 detik</span>

@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { convex, isConvexEnabled } from "@/integrations/convex/client";
 import { anyApi } from "convex/server";
 
@@ -182,18 +181,15 @@ export async function refreshImpersonatedData(): Promise<{ ok: boolean; changed:
   const info = getImpersonation();
   if (!info) return { ok: false, changed: false };
 
-  const { data } = await supabase
-    .from("user_sessions")
-    .select("form_data, village_id, village_name, user_name")
-    .eq("session_id", info.session_id)
-    .maybeSingle();
+  if (!isConvexEnabled || !convex) return { ok: false, changed: false };
 
+  const data = await convex.query(anyApi.sessions.getBySessionId, { sessionId: info.session_id } as any);
   if (!data) return { ok: false, changed: false };
 
-  const nextVillageId = data.village_id || info.village_id;
-  const nextVillageName = data.village_name || info.village_name;
-  const nextUserName = data.user_name || info.user_name;
-  const nextFormData = (data.form_data as Record<string, unknown>) ?? null;
+  const nextVillageId = (data as any).village_id || info.village_id;
+  const nextVillageName = (data as any).village_name || info.village_name;
+  const nextUserName = (data as any).user_name || info.user_name;
+  const nextFormData = ((data as any).form_data as Record<string, unknown>) ?? null;
 
   const currentState = localStorage.getItem("siskeudes_state") || "{}";
   const currentMutasi = localStorage.getItem("siskeudes_mutasi_kas") || "[]";

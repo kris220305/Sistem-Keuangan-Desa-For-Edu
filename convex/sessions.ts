@@ -151,6 +151,31 @@ export const listActive = queryGeneric({
   },
 });
 
+export const listActivePublic = queryGeneric({
+  args: { minutesThreshold: v.optional(v.number()) },
+  handler: async ({ db }, { minutesThreshold }) => {
+    const mins = Math.max(1, Math.floor(minutesThreshold ?? 5));
+    const cutoff = Date.now() - mins * 60 * 1000;
+    const rows = await db
+      .query("userSessions")
+      .withIndex("by_lastActive", (q) => q.gt("lastActive", cutoff))
+      .order("desc")
+      .take(500);
+    return rows.map((s) => ({
+      id: s._id,
+      session_id: s.sessionId,
+      user_name: s.userName,
+      village_id: s.villageId,
+      village_name: s.villageName,
+      last_active: new Date(s.lastActive).toISOString(),
+      created_at: new Date(s.createdAt).toISOString(),
+      form_progress: (s.formProgress || {}) as Record<string, boolean>,
+      work_mode: s.workMode,
+      group_id: s.groupId,
+    }));
+  },
+});
+
 export const listAll = queryGeneric({
   args: {
     adminToken: v.string(),
