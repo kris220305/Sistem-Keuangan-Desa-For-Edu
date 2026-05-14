@@ -7,27 +7,36 @@ import { cryptoUtils } from "./_shared/crypto";
 export const login = mutationGeneric({
   args: { password: v.string() },
   handler: async ({ db }, { password }) => {
-    const expected = process.env.ADMIN_PASSWORD || "admin";
-    if (password !== expected) throw new ConvexError("Password salah");
-
-    const token = cryptoUtils.bytesToHex(cryptoUtils.randomBytes(32));
-    const tokenHash = await hashAdminToken(token);
-    const now = Date.now();
-    const expiresAt = now + 12 * 60 * 60 * 1000;
-
-    await db.insert("adminSessions", { tokenHash, createdAt: now, expiresAt });
     try {
-      await writeAuditLog(db, {
-        actorId: "admin",
-        actionType: "admin.login",
-        targetType: "adminSessions",
-        targetId: tokenHash,
-        fieldName: "tokenHash",
-        oldValue: null,
-        newValue: tokenHash,
-      });
-    } catch {}
-    return { token, expiresAt };
+      const expected = process.env.ADMIN_PASSWORD || "admin";
+      if (password !== expected) throw new ConvexError("Password salah");
+
+      const token = cryptoUtils.bytesToHex(cryptoUtils.randomBytes(32));
+      const tokenHash = await hashAdminToken(token);
+      const now = Date.now();
+      const expiresAt = now + 12 * 60 * 60 * 1000;
+
+      await db.insert("adminSessions", { tokenHash, createdAt: now, expiresAt });
+      try {
+        await writeAuditLog(db, {
+          actorId: "admin",
+          actionType: "admin.login",
+          targetType: "adminSessions",
+          targetId: tokenHash,
+          fieldName: "tokenHash",
+          oldValue: null,
+          newValue: tokenHash,
+        });
+      } catch {}
+      return { token, expiresAt };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("admin.login failed", msg);
+      if (err instanceof ConvexError) throw err;
+      throw new ConvexError(
+        "Admin login gagal. Pastikan backend Convex sudah ter-deploy dan schema terbaru sudah aktif.",
+      );
+    }
   },
 });
 
