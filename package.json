@@ -9,8 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "convex:dev": "convex dev",
-    "convex:deploy": "convex deploy",
+    "convex:dev": "node scripts/convex-wrapper.mjs dev",
+    "convex:deploy": "node scripts/convex-wrapper.mjs deploy",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
