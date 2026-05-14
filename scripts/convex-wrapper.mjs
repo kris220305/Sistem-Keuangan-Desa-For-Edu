@@ -9,19 +9,15 @@ if (argv.length === 0) {
 }
 
 for (const key of Object.keys(process.env)) {
-  if (key === "VERCEL" || key.startsWith("VERCEL_") || key.startsWith("VERCEL")) {
-    delete process.env[key];
-    continue;
-  }
-  if (key === "NOW_BUILDER" || key.startsWith("NOW_")) {
-    delete process.env[key];
-    continue;
-  }
-  if (key.startsWith("VERCEL_GIT_")) {
+  const upper = key.toUpperCase();
+  if (upper === "VERCEL" || upper.includes("VERCEL") || upper.startsWith("NOW_") || upper === "NOW_BUILDER") {
     delete process.env[key];
     continue;
   }
 }
+
+delete process.env.CI;
+delete process.env.GITHUB_ACTIONS;
 
 const command = argv[0];
 const commandArgs = argv.slice(1);
