@@ -41,11 +41,6 @@ export default function Beranda() {
           </svg>
         </div>
 
-        {/* Title */}
-        <h1 className={`text-4xl md:text-5xl lg:text-6xl font-extrabold font-heading tracking-tight text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.55)] transition-all duration-700 delay-300 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          SISKEUDES BUDDY
-        </h1>
-
         {/* Subtitle */}
         <div className={`mt-3 transition-all duration-700 delay-500 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <div className="inline-block px-5 py-4 rounded-2xl bg-[hsl(152,45%,10%/0.35)] backdrop-blur-md border border-[hsl(0,0%,100%/0.18)] shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
@@ -62,9 +57,11 @@ export default function Beranda() {
         <div className={`mx-auto mt-6 h-0.5 bg-gradient-to-r from-transparent via-[hsl(45,90%,55%)] to-transparent transition-all duration-1000 delay-700 ${loaded ? 'w-48 opacity-100' : 'w-0 opacity-0'}`} />
 
         {/* Tagline */}
-        <p className={`mt-5 text-xs md:text-sm text-[hsl(0,0%,85%)] italic max-w-md mx-auto drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-all duration-700 delay-[900ms] ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          Menuju Tatakelola Keuangan Desa yang Akuntabel dan Transparan
-        </p>
+        <div className={`mt-5 transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <p className="inline-block text-xs md:text-sm text-white italic max-w-md mx-auto px-4 py-2 rounded-xl bg-[hsl(152,45%,10%/0.45)] backdrop-blur-md border border-[hsl(0,0%,100%/0.16)] shadow-[0_10px_26px_rgba(0,0,0,0.45)]">
+            Menuju Tatakelola Keuangan Desa yang Akuntabel dan Transparan
+          </p>
+        </div>
 
         {/* Year badge */}
         <div className={`mt-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[hsl(0,0%,100%/0.15)] backdrop-blur-md border border-[hsl(0,0%,100%/0.2)] transition-all duration-700 delay-[1100ms] ${loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
