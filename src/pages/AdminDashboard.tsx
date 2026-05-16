@@ -96,6 +96,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [villageLimits, setVillageLimits] = useState<Record<string, { min: number; max: number }>>({});
   const [tokenVerified, setTokenVerified] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
   // Confirm dialogs
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
@@ -302,7 +303,6 @@ export default function AdminDashboard() {
     await updateSiteSettings({ is_locked: lockAction === "lock" });
     toast.success(lockAction === "lock" ? "Website telah dikunci" : "Website telah dibuka kembali");
     setLockDialog(false);
-    refresh();
   };
 
   const handleKickUser = (s: SessionRow) => {
@@ -504,7 +504,8 @@ export default function AdminDashboard() {
       try {
         const detail = await convex!.query(anyApi.sessions.getBySessionId, { sessionId: s.session_id } as any);
         formData = ((detail as any)?.form_data as Record<string, unknown>) ?? null;
-      } catch {
+      } catch (err) {
+        console.warn('[admin] failed to fetch user form_data for impersonation:', err);
         formData = null;
       }
     }
@@ -516,7 +517,6 @@ export default function AdminDashboard() {
       form_data: formData,
     });
     toast.success(`Memantau pekerjaan: ${s.user_name || "—"}`);
-    // Send admin into the user UI starting from Data Umum
     navigate("/data-umum");
   };
 
@@ -1127,11 +1127,20 @@ export default function AdminDashboard() {
               <AlertDialogCancel className="bg-transparent border-[hsl(152,30%,25%)] text-white hover:bg-[hsl(152,20%,20%)]">
                 Batal
               </AlertDialogCancel>
-              <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={async () => {
-                if (confirmAction) await confirmAction.action();
-                setConfirmAction(null);
+              <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50" disabled={actionBusy} onClick={async () => {
+                if (!confirmAction || actionBusy) return;
+                setActionBusy(true);
+                try {
+                  await confirmAction.action();
+                } catch (err) {
+                  console.error('[admin] action failed:', err);
+                  toast.error(`Aksi gagal: ${err instanceof Error ? err.message : String(err)}`);
+                } finally {
+                  setActionBusy(false);
+                  setConfirmAction(null);
+                }
               }}>
-                Ya, Lanjutkan
+                {actionBusy ? "Memproses..." : "Ya, Lanjutkan"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
