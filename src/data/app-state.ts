@@ -1,6 +1,7 @@
 import { upsertSession, getSessionId } from "@/lib/session-manager";
 import { convex, isConvexEnabled } from "@/integrations/convex/client";
 import { anyApi } from "convex/server";
+import { formatBytes, isWithinConvexDocumentSafeLimit } from "@/lib/payload-size";
 
 // Shared types and simple state manager using localStorage
 
@@ -483,6 +484,18 @@ async function flushPush() {
       }
     })();
     const payload = { ...state, mutasiKas } as unknown as Record<string, unknown>;
+    const payloadSize = isWithinConvexDocumentSafeLimit(payload);
+    if (!payloadSize.ok) {
+      const message = `Data terlalu besar untuk disinkronkan (${formatBytes(payloadSize.bytes)}). Kurangi lampiran/baris data atau pecah pekerjaan per kelompok.`;
+      console.error("[sync] payload too large:", message);
+      dispatchSyncEvent("failed", message);
+      const { toast } = await import("sonner");
+      toast.error(message);
+      return;
+    }
+    if (payloadSize.warning) {
+      console.warn("[sync] payload nearing Convex document limit:", formatBytes(payloadSize.bytes));
+    }
     localStorage.setItem('siskeudes_last_local_write_at', String(Date.now()));
     dispatchSyncEvent('syncing');
     if (workMode === 'group' && groupId && isConvexEnabled && convex) {

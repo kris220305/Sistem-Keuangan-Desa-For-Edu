@@ -3,6 +3,19 @@ import { v } from "convex/values";
 import { assertAdmin } from "./_shared/adminAuth";
 import { writeAuditLog } from "./_shared/audit";
 
+const CONVEX_DOCUMENT_SAFE_BYTES = 850 * 1024;
+
+function getJsonByteSize(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).length;
+}
+
+function ensureReportWithinLimit(reportData: unknown) {
+  const bytes = getJsonByteSize(reportData);
+  if (bytes > CONVEX_DOCUMENT_SAFE_BYTES) {
+    throw new Error(`Data laporan terlalu besar untuk disimpan (${Math.ceil(bytes / 1024)} KB).`);
+  }
+}
+
 async function assertIsLeader(db: any, groupId: any, sessionId: string) {
   const member = await db
     .query("groupMembers")
@@ -23,6 +36,7 @@ export const submit = mutationGeneric({
   handler: async ({ db }, args) => {
     if (!args.groupId) throw new Error("Group tidak ditemukan");
     await assertIsLeader(db, args.groupId, args.sessionId);
+    ensureReportWithinLimit(args.reportData);
     const id = await db.insert("reportSubmissions", {
       groupId: args.groupId,
       sessionId: args.sessionId,

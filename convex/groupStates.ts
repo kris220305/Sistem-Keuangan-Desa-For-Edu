@@ -43,9 +43,22 @@ const COLLECTIONS = [
 
 type MetaEntry = { v: number; t: number; by?: string };
 type MetaMap = Record<string, MetaEntry>;
+const CONVEX_DOCUMENT_SAFE_BYTES = 850 * 1024;
 
 function asObj(x: unknown): Record<string, unknown> {
   return typeof x === "object" && x !== null ? (x as Record<string, unknown>) : {};
+}
+
+function getJsonByteSize(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).length;
+}
+
+function ensureStateWithinLimit(state: unknown) {
+  const bytes = getJsonByteSize(state);
+  if (bytes > CONVEX_DOCUMENT_SAFE_BYTES) {
+    const kb = Math.ceil(bytes / 1024);
+    throw new Error(`Data kelompok terlalu besar untuk disimpan (${kb} KB). Pecah data per kategori atau kurangi baris.`);
+  }
 }
 
 async function assertCanWriteGroupState(db: any, groupId: any, sessionId: string) {
@@ -169,6 +182,7 @@ export const upsert = mutationGeneric({
   args: { groupId: v.id("groups"), sessionId: v.string(), state: AnggaranSchema },
   handler: async ({ db }, { groupId, sessionId, state }) => {
     await assertCanWriteGroupState(db, groupId, sessionId);
+    ensureStateWithinLimit(state);
     const existing = await db
       .query("groupStates")
       .withIndex("by_groupId", (q) => q.eq("groupId", groupId))
@@ -217,6 +231,7 @@ export const merge = mutationGeneric({
       .withIndex("by_groupId", (q) => q.eq("groupId", groupId))
       .unique();
     const merged = existing ? mergeStatesServer(existing.state, state) : state;
+    ensureStateWithinLimit(merged);
     const oldHash = existing ? await auditUtils.hashJson(existing.state) : null;
     const newHash = await auditUtils.hashJson(merged);
     const now = Date.now();

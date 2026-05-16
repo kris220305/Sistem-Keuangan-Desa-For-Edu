@@ -1,5 +1,6 @@
 import { convex, isConvexEnabled } from "@/integrations/convex/client";
 import { anyApi } from "convex/server";
+import { formatBytes, isWithinConvexDocumentSafeLimit } from "@/lib/payload-size";
 
 const SESSION_KEY = "siskeudes_session_id";
 const HAS_CONVEX_SESSION_KEY = "siskeudes_has_convex_session";
@@ -414,6 +415,10 @@ export async function isCurrentUserLeader(): Promise<boolean> {
 
 export async function submitReport(reportData: Record<string, unknown>) {
   if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  const payloadSize = isWithinConvexDocumentSafeLimit(reportData);
+  if (!payloadSize.ok) {
+    throw new Error(`Data laporan terlalu besar (${formatBytes(payloadSize.bytes)}). Kurangi data sebelum mengirim laporan.`);
+  }
   const sessionId = getSessionId();
   const groupId = localStorage.getItem("siskeudes_group_id");
   const villageName = localStorage.getItem("siskeudes_desa_profile")
@@ -455,6 +460,10 @@ export async function syncFormDataToGroup() {
   const appState = localStorage.getItem("siskeudes_app_state");
   if (!appState) return;
   const parsedState = JSON.parse(appState);
+  const payloadSize = isWithinConvexDocumentSafeLimit(parsedState);
+  if (!payloadSize.ok) {
+    throw new Error(`Data kelompok terlalu besar untuk sync (${formatBytes(payloadSize.bytes)}).`);
+  }
   try {
     await getConvex().mutation(anyApi.groupStates.merge, {
       groupId: groupId as never,

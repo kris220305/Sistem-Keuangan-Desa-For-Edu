@@ -4,6 +4,7 @@ import { getSessionId, upsertSession } from "@/lib/session-manager";
 import { loadState } from "@/data/app-state";
 import type { MutasiKasItem } from "@/data/mutasi-kas";
 import { toast } from "sonner";
+import { formatBytes, isWithinConvexDocumentSafeLimit } from "@/lib/payload-size";
 
 export function syncMutasiKasToSession(mutasiKas: MutasiKasItem[]) {
   try {
@@ -12,6 +13,11 @@ export function syncMutasiKasToSession(mutasiKas: MutasiKasItem[]) {
       ...loadState(),
       mutasiKas,
     } as unknown as Record<string, unknown>;
+    const payloadSize = isWithinConvexDocumentSafeLimit(payload);
+    if (!payloadSize.ok) {
+      toast.error(`Data mutasi kas terlalu besar untuk sync (${formatBytes(payloadSize.bytes)}).`);
+      return;
+    }
     const workMode = localStorage.getItem("siskeudes_work_mode") || "individual";
     const groupId = localStorage.getItem("siskeudes_group_id");
     if (workMode === "group" && groupId && isConvexEnabled && convex) {

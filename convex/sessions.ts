@@ -3,6 +3,20 @@ import { v } from "convex/values";
 import { assertAdmin } from "./_shared/adminAuth";
 import { writeAuditLog } from "./_shared/audit";
 
+const CONVEX_DOCUMENT_SAFE_BYTES = 850 * 1024;
+
+function getJsonByteSize(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).length;
+}
+
+function ensureFormDataWithinLimit(formData: unknown) {
+  if (formData === undefined || formData === null) return;
+  const bytes = getJsonByteSize(formData);
+  if (bytes > CONVEX_DOCUMENT_SAFE_BYTES) {
+    throw new Error(`Data sesi terlalu besar untuk disimpan (${Math.ceil(bytes / 1024)} KB).`);
+  }
+}
+
 function normalizeLimit(limit: number | undefined) {
   const req = Math.floor(limit ?? 50);
   if (req > 50) throw new Error("Limit maksimal 50");
@@ -26,6 +40,7 @@ export const upsert = mutationGeneric({
     formData: v.optional(v.any()),
   },
   handler: async ({ db }, args) => {
+    ensureFormDataWithinLimit(args.formData);
     const now = Date.now();
     const existing = await db
       .query("userSessions")
