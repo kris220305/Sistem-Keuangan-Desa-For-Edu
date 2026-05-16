@@ -16,7 +16,7 @@ async function recountMembers(db: any, groupId: any): Promise<number> {
   const rows = await db
     .query("groupMembers")
     .withIndex("by_groupId", (q: any) => q.eq("groupId", groupId))
-    .collect();
+    .take(100);
   return rows.length;
 }
 
@@ -44,7 +44,7 @@ export const listForVillage = queryGeneric({
     const groups = await db
       .query("groups")
       .withIndex("by_villageId", (q) => q.eq("villageId", villageId))
-      .collect();
+      .take(100);
     groups.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
     return groups.map((g) => ({
       id: g._id,
@@ -62,7 +62,7 @@ export const listForVillage = queryGeneric({
 export const listAllWithCounts = queryGeneric({
   args: {},
   handler: async ({ db }) => {
-    const groups = await db.query("groups").collect();
+    const groups = await db.query("groups").take(200);
     groups.sort((a, b) => {
       if (a.villageName !== b.villageName) return a.villageName.localeCompare(b.villageName);
       return a.name.localeCompare(b.name);
@@ -182,6 +182,9 @@ export const joinGroup = mutationGeneric({
           .withIndex("by_groupId", (q) => q.eq("groupId", g._id))
           .unique();
         if (st) await db.delete(st._id);
+        // Also clean groupStateChunks
+        const chunks = await db.query("groupStateChunks").withIndex("by_groupId", (q: any) => q.eq("groupId", g._id)).take(50);
+        for (const c of chunks) await db.delete(c._id);
         continue;
       }
       if (m.isLeader) {
@@ -259,7 +262,7 @@ export const joinGroup = mutationGeneric({
       sessionId: args.sessionId,
       userName: args.userName,
       isLeader: isFirst,
-      permissions: ["write"],
+      permissions: ["read", "write"],
       joinedAt: Date.now(),
     });
     try {
@@ -365,6 +368,9 @@ export const leaveGroup = mutationGeneric({
           .withIndex("by_groupId", (q) => q.eq("groupId", g._id))
           .unique();
         if (st) await db.delete(st._id);
+        // Also clean groupStateChunks
+        const chunks = await db.query("groupStateChunks").withIndex("by_groupId", (q: any) => q.eq("groupId", g._id)).take(50);
+        for (const c of chunks) await db.delete(c._id);
         continue;
       }
 

@@ -119,7 +119,9 @@ export async function startImpersonation(session: {
         actionType: "start",
         payload: info,
       } as any);
-    } catch {}
+    } catch (err) {
+      console.error('[impersonation] recordEvent start failed:', err instanceof Error ? err.message : err);
+    }
   }
 }
 
@@ -135,7 +137,9 @@ export async function stopImpersonation() {
         restored = true;
       }
       await convex.mutation(anyApi.impersonation.clearBackup, { adminToken } as any);
-    } catch {}
+    } catch (err) {
+      console.error('[impersonation] getBackup/clearBackup failed:', err instanceof Error ? err.message : err);
+    }
   }
 
   const backup = localStorage.getItem(BACKUP_KEY);
@@ -164,7 +168,9 @@ export async function stopImpersonation() {
         actionType: "stop",
         payload: { stopped_at: Date.now() },
       } as any);
-    } catch {}
+    } catch (err) {
+      console.error('[impersonation] recordEvent stop failed:', err instanceof Error ? err.message : err);
+    }
   }
 }
 

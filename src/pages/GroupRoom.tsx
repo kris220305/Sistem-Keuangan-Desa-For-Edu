@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSessionId } from "@/lib/session-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { Crown, User, Users, ArrowLeft } from "lucide-react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
+import { useGroupContext } from "@/hooks/use-group-context";
 
 interface GroupMember {
   id: string;
@@ -23,8 +23,7 @@ export default function GroupRoom() {
 
 function GroupRoomConvex() {
   const navigate = useNavigate();
-  const groupId = localStorage.getItem("siskeudes_group_id");
-  const currentSessionId = getSessionId();
+  const { groupId, sessionId: currentSessionId } = useGroupContext();
   const [timedOut, setTimedOut] = useState(false);
   const villageName = (() => {
     try {

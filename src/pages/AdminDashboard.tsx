@@ -19,15 +19,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getAllSessions, getActiveSessions, getSiteSettings, updateSiteSettings, deleteSession, deleteAllSessions,
+  getAllSessions, updateSiteSettings, deleteSession, deleteAllSessions,
   resetUserProgress, resetAllProgress,
-  getSubmittedReports, deleteReport, deleteAllReports, deleteReportPdf, deleteAllReportPdfs,
-  getAllVillageGroupLimits, upsertVillageGroupLimit, type VillageGroupLimit,
+  deleteReport, deleteAllReports, deleteReportPdf, deleteAllReportPdfs,
+  upsertVillageGroupLimit, type VillageGroupLimit,
 } from "@/lib/session-manager";
 import { startImpersonation } from "@/lib/admin-impersonation";
 import { villageProfiles } from "@/data/village-profiles";
 import { convex, isConvexEnabled } from "@/integrations/convex/client";
 import { anyApi } from "convex/server";
+import { useQuery } from "convex/react";
 
 const FORM_STEPS = [
   { key: "data_umum", label: "Data Umum Desa" },
@@ -101,50 +102,118 @@ export default function AdminDashboard() {
     action: () => Promise<void>;
   } | null>(null);
 
-  const pdfCount = reports.filter((r) => !!r.pdf_url).length;
+  // Realtime subscription for site settings (admin panel stays live)
+  const realtimeSettings = useQuery(anyApi.siteSettings.get, {}) as {
+    is_locked: boolean;
+    max_users: number;
+    demo_seed_version: number;
+    wipe_all_version: number;
+  } | null | undefined;
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [all, active, settings, submitted, limits] = await Promise.all([
-        getAllSessions(),
-        getActiveSessions(2),
-        getSiteSettings(),
-        getSubmittedReports(),
-        getAllVillageGroupLimits(),
-      ]);
-      setSessions(all as SessionRow[]);
-      setActiveSessions(active as SessionRow[]);
-      setReports(submitted as ReportRow[]);
-      if (settings) {
-        setSiteSettings({
-          is_locked: settings.is_locked,
-          max_users: settings.max_users,
-          demo_seed_version: (settings as any).demo_seed_version ?? 0,
-          wipe_all_version: (settings as any).wipe_all_version ?? 0,
-        });
-      }
+  // Realtime subscription for groups
+  const realtimeGroups = useQuery(anyApi.groups.listAllWithCounts, {}) as Array<{
+    id: string;
+    name: string;
+    village_id: string;
+    village_name: string;
+    member_count: number;
+    max_members: number;
+  }> | undefined;
 
-      // Build limits map keyed by village_id with defaults for missing villages
+  // Realtime subscription for active sessions
+  const adminToken = (() => {
+    try { return sessionStorage.getItem("siskeudes_admin_token"); } catch { return null; }
+  })();
+
+  const realtimeActiveSessions = useQuery(
+    anyApi.sessions.listActive,
+    adminToken ? { adminToken, minutesThreshold: 2 } : "skip",
+  ) as SessionRow[] | undefined;
+
+  // Realtime subscription for reports
+  const realtimeReports = useQuery(
+    anyApi.reportSubmissions.listAll,
+    adminToken ? { adminToken } : "skip",
+  ) as ReportRow[] | undefined;
+
+  // Realtime subscription for village group limits
+  const realtimeLimits = useQuery(anyApi.groupLimits.listAll, {}) as Array<{
+    village_id: string;
+    village_name: string;
+    min_members: number;
+    max_members: number;
+  }> | undefined;
+
+  // Realtime admin summary (counts) — lightweight alternative to full session list
+  const realtimeSummary = useQuery(
+    anyApi.adminSummary.getCounts,
+    adminToken ? { adminToken } : "skip",
+  ) as {
+    activeCount: number;
+    totalCount: number;
+    groupCount: number;
+    reportCount: number;
+    pdfCount: number;
+    villageBreakdown: Array<{ villageId: string; villageName: string; totalUsers: number; activeUsers: number }>;
+  } | undefined;
+
+  // Sync realtime settings into local state
+  useEffect(() => {
+    if (realtimeSettings) {
+      setSiteSettings({
+        is_locked: realtimeSettings.is_locked,
+        max_users: realtimeSettings.max_users,
+        demo_seed_version: realtimeSettings.demo_seed_version ?? 0,
+        wipe_all_version: realtimeSettings.wipe_all_version ?? 0,
+      });
+    }
+  }, [realtimeSettings]);
+
+  // Sync realtime active sessions
+  useEffect(() => {
+    if (realtimeActiveSessions) {
+      setActiveSessions(realtimeActiveSessions as SessionRow[]);
+    }
+  }, [realtimeActiveSessions]);
+
+  // Sync realtime reports
+  useEffect(() => {
+    if (realtimeReports) {
+      setReports(realtimeReports as ReportRow[]);
+    }
+  }, [realtimeReports]);
+
+  // Sync realtime village limits
+  useEffect(() => {
+    if (realtimeLimits) {
       const map: Record<string, { min: number; max: number }> = {};
       villageProfiles.forEach((v) => {
-        const found = limits.find((l) => l.village_id === v.id);
+        const found = realtimeLimits.find((l) => l.village_id === v.id);
         map[v.id] = {
           min: found?.min_members ?? 1,
           max: found?.max_members ?? 10,
         };
       });
       setVillageLimits(map);
+    }
+  }, [realtimeLimits]);
 
+  const pdfCount = reports.filter((r) => !!r.pdf_url).length;
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Only fetch the full session list imperatively (requires pagination).
+      // Other data (settings, active sessions, reports, limits) are realtime via useQuery.
+      const all = await getAllSessions();
+      setSessions(all as SessionRow[]);
     } catch (e) {
+      console.error('[admin] refresh failed:', e);
       toast.error("Gagal memuat data admin. Coba refresh.");
       setSessions([]);
-      setActiveSessions([]);
-      setReports([]);
     } finally {
       setLoading(false);
     }
-
   }, []);
 
   useEffect(() => {
@@ -168,7 +237,9 @@ export default function AdminDashboard() {
       })();
     }
     refresh();
-    const interval = setInterval(refresh, 5000);
+    // Polling only for full session list (listAll) which requires pagination
+    // Other data (settings, active sessions, reports, limits) are now realtime via useQuery
+    const interval = setInterval(refresh, 30000);
     const onFocus = () => refresh();
     const onVis = () => {
       if (document.visibilityState === "visible") refresh();
@@ -327,12 +398,28 @@ export default function AdminDashboard() {
     setConfirmAction({
       title: "Muat Data Demo untuk Semua User",
       description:
-        "Ini akan memuat data demo ke SEMUA user secara otomatis (global broadcast). Data input user saat ini akan tertimpa oleh data demo.",
+        "Ini akan memuat data demo ke SEMUA user dan kelompok secara otomatis. Data input user saat ini akan tertimpa oleh data demo.",
       action: async () => {
-        const next = Date.now();
-        await updateSiteSettings({ demo_seed_version: next });
-        toast.success("Trigger data demo dikirim. Semua user akan memuat data demo otomatis.");
-        refresh();
+        try {
+          const adminToken = sessionStorage.getItem("siskeudes_admin_token");
+          if (!adminToken || !canUseConvex) {
+            toast.error("Admin token tidak tersedia");
+            return;
+          }
+          // Import demo data and send to server
+          const { getDemoSeedData } = await import("@/data/demo-seed-data");
+          const demoState = getDemoSeedData();
+          await convex!.mutation(anyApi.adminActions.seedDemoData, {
+            adminToken,
+            demoState: demoState as any,
+          } as any);
+          toast.success("Data demo berhasil dimuat ke semua kelompok dan user. Semua user akan melihat update realtime.");
+          refresh();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[admin] seedDemoData failed:', msg);
+          toast.error(`Gagal memuat data demo: ${msg}`);
+        }
       },
     });
   };
@@ -341,12 +428,24 @@ export default function AdminDashboard() {
     setConfirmAction({
       title: "Reset Semua Data Input untuk Semua User",
       description:
-        "PERINGATAN: Ini akan menghapus seluruh data input di perangkat semua user (global broadcast). Semua user akan refresh otomatis.",
+        "PERINGATAN: Ini akan menghapus seluruh data input di server (groupStates, formData, reportSubmissions). Semua user akan melihat data kosong secara realtime.",
       action: async () => {
-        const next = Date.now();
-        await updateSiteSettings({ wipe_all_version: next });
-        toast.success("Trigger reset data dikirim. Semua user akan direset otomatis.");
-        refresh();
+        try {
+          const adminToken = sessionStorage.getItem("siskeudes_admin_token");
+          if (!adminToken || !canUseConvex) {
+            toast.error("Admin token tidak tersedia");
+            return;
+          }
+          const res = await convex!.mutation(anyApi.adminActions.wipeAllData, {
+            adminToken,
+          } as any);
+          toast.success(`Data berhasil direset. ${(res as any).groupStatesDeleted} groupStates dihapus, ${(res as any).sessionsCleared} session direset, ${(res as any).reportsDeleted} laporan dihapus.`);
+          refresh();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[admin] wipeAllData failed:', msg);
+          toast.error(`Gagal reset data: ${msg}`);
+        }
       },
     });
   };

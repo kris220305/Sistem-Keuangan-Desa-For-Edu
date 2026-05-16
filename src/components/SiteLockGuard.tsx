@@ -3,14 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { getSiteSettings, getActiveSessions, heartbeat, getSessionId, upsertSession, hasConvexServerSession } from "@/lib/session-manager";
 import { isConvexEnabled, convex } from "@/integrations/convex/client";
 import { anyApi } from "convex/server";
+import { useQuery } from "convex/react";
 import { Lock, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { saveState } from "@/data/app-state";
-import { getDemoSeedData } from "@/data/demo-seed-data";
 
-const ADMIN_BYPASS_PASSWORD = "12345";
+// Admin bypass now validated server-side via Convex admin.login mutation
+// No hardcoded password in frontend
 
 function wipeLocalUserData() {
   const keysToKeep = ["siskeudes_session_id"];
@@ -71,6 +72,58 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
   const [bypassed, setBypassed] = useState(false);
   const [bypassPassword, setBypassPassword] = useState("");
   const [showBypass, setShowBypass] = useState(false);
+
+  // Realtime subscription for site settings — reacts immediately when admin locks/unlocks
+  const realtimeSettings = useQuery(anyApi.siteSettings.get, {}) as {
+    is_locked: boolean;
+    max_users: number;
+    demo_seed_version: number;
+    wipe_all_version: number;
+  } | null | undefined;
+
+  // React to realtime settings changes (lock/unlock, wipe, demo)
+  useEffect(() => {
+    if (!realtimeSettings) return;
+    if (sessionStorage.getItem("siskeudes_admin") === "true") return;
+    if (localStorage.getItem("siskeudes_admin_impersonate")) return;
+
+    // Handle lock state change
+    if (realtimeSettings.is_locked && !bypassed) {
+      setLocked(true);
+    } else if (!realtimeSettings.is_locked) {
+      setLocked(false);
+    }
+
+    // Handle wipe_all_version change
+    const wipeVer = Math.max(0, Math.floor(realtimeSettings.wipe_all_version || 0));
+    const appliedWipe = Math.max(0, Math.floor(Number(localStorage.getItem("siskeudes_wipe_all_applied_v") || "0") || 0));
+    if (wipeVer > 0 && wipeVer !== appliedWipe) {
+      localStorage.setItem("siskeudes_wipe_all_applied_v", String(wipeVer));
+      // Wipe local data
+      saveState({
+        pendapatan: [], belanja: [], pembiayaan: [], penerimaan: [], silpa: [],
+        spp: [], pencairan: [], penyetoranPajak: [], saldoAwal: [], spjPanjar: [],
+        sisaPanjar: [], jurnalUmum: [], kegiatanAnggaran: [], __meta: {},
+      });
+      try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
+      try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
+      toast.success("Semua data input direset oleh admin.");
+    }
+
+    // Handle demo_seed_version change
+    const demoVer = Math.max(0, Math.floor(realtimeSettings.demo_seed_version || 0));
+    const appliedDemo = Math.max(0, Math.floor(Number(localStorage.getItem("siskeudes_demo_seed_applied_v") || "0") || 0));
+    if (demoVer > 0 && demoVer !== appliedDemo) {
+      localStorage.setItem("siskeudes_demo_seed_applied_v", String(demoVer));
+      import("@/data/demo-seed-data").then(({ getDemoSeedData }) => {
+        const demo = getDemoSeedData();
+        saveState(demo);
+        try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
+        try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
+        toast.success("Data demo dimuat oleh admin.");
+      });
+    }
+  }, [realtimeSettings, bypassed]);
 
   useEffect(() => {
     if (sessionStorage.getItem("siskeudes_admin") === "true") {
@@ -135,13 +188,14 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
         const localHasData = !!localState && localState !== "{}" && localState.length > 4;
 
         if (serverEmpty && localHasData) {
-          toast.info("Progress Anda telah direset oleh admin. Halaman akan dimuat ulang.");
+          toast.info("Progress Anda telah direset oleh admin.");
           localStorage.removeItem("siskeudes_app_state");
           localStorage.removeItem("siskeudes_state");
           localStorage.removeItem("siskeudes_mutasi_kas");
-          setTimeout(() => window.location.reload(), 1200);
+          // Dispatch state-updated so all forms rerender with empty state
+          window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
         }
-      } catch { /* silent fail for kick check */ }
+      } catch (e) { console.warn('[SiteLockGuard] kick check failed:', e); }
     };
 
     const checkSettings = async () => {
@@ -173,7 +227,6 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
           localStorage.setItem("siskeudes_wipe_all_applied_v", String(wipeVer));
           wipeAllDataInput();
           toast.success("Semua data input direset oleh admin.");
-          setTimeout(() => window.location.reload(), 800);
           return;
         }
 
@@ -184,12 +237,13 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
             return;
           }
           localStorage.setItem("siskeudes_demo_seed_applied_v", String(demoVer));
-          const demo = getDemoSeedData();
-          saveState(demo);
-          try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
-          try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
-          toast.success("Data demo dimuat oleh admin.");
-          setTimeout(() => window.location.reload(), 800);
+          import("@/data/demo-seed-data").then(({ getDemoSeedData: getDemo }) => {
+            const demo = getDemo();
+            saveState(demo);
+            try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
+            try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
+            toast.success("Data demo dimuat oleh admin.");
+          });
           return;
         }
 
@@ -212,7 +266,7 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
 
         setLocked(false);
         setMaxReached(false);
-      } catch { /* silent fail for settings check */ }
+      } catch (e) { console.warn('[SiteLockGuard] settings check failed:', e); }
       setChecking(false);
     };
 
@@ -247,13 +301,22 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
     };
   }, [locked, maxReached, bypassed]);
 
-  const handleBypass = () => {
-    if (bypassPassword === ADMIN_BYPASS_PASSWORD) {
+  const handleBypass = async () => {
+    if (!isConvexEnabled || !convex) {
+      toast.error("Verifikasi admin membutuhkan Convex.");
+      setBypassPassword("");
+      return;
+    }
+    try {
+      const res = await convex.mutation(anyApi.admin.login, { password: bypassPassword } as any);
+      sessionStorage.setItem("siskeudes_admin_token", (res as any).token);
+      sessionStorage.setItem("siskeudes_admin", "true");
       setBypassed(true);
       setShowBypass(false);
       toast.success("Verifikasi admin berhasil. Website terbuka.");
-    } else {
-      toast.error("Password salah!");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Password salah!";
+      toast.error(msg);
     }
     setBypassPassword("");
   };

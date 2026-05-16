@@ -1,22 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { getSessionId } from "@/lib/session-manager";
 import { toast } from "sonner";
 import { loadState, mergeStates, type AppState } from "@/data/app-state";
-import { isConvexEnabled } from "@/integrations/convex/client";
 import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
+import { useGroupContext } from "@/hooks/use-group-context";
 
 /**
- * Subscribes to realtime updates of user_sessions rows that belong to the
- * current user's group, AND performs an initial pull so latecomers immediately
- * see what teammates already saved.
- *
- * Improvements vs previous version:
- *  - Initial pull on mount + when group_id changes (no more "kosong padahal teman sudah ngerjakan")
- *  - Soft state apply (no full window.location.reload) → dispatches "siskeudes:state-updated"
- *    so pages re-read localStorage without a hard reload (less patah-patah on slow devices)
- *  - Smarter debounce: collapses bursts of incoming updates into a single apply
- *  - Conflict detection: if a teammate writes within 2s of my own write, show a warning toast
+ * Subscribes to realtime updates of groupStates via Convex useQuery subscription.
+ * 
+ * Key improvements:
+ *  - Uses GroupContext instead of reading localStorage directly (no stale groupId)
+ *  - Listens to "siskeudes:group-changed" event via context
+ *  - Applies incoming state via merge, dispatches "siskeudes:state-updated"
+ *  - Conflict detection: if teammate writes within 2s of local write, delays apply
+ *  - No polling — pure reactive subscription
  */
 
 const LAST_LOCAL_WRITE_KEY = "siskeudes_last_local_write_at";
@@ -29,7 +27,7 @@ function getLastLocalWriteAt(): number {
   }
 }
 
-function applyIncomingState(formData: Record<string, unknown>) {
+function applyIncomingState(formData: Record<string, unknown>): boolean {
   try {
     const { mutasiKas, ...rest } = formData as { mutasiKas?: unknown };
     const local = loadState();
@@ -37,7 +35,7 @@ function applyIncomingState(formData: Record<string, unknown>) {
     const mergedStr = JSON.stringify(merged);
     const currentStr = JSON.stringify(local);
     if (mergedStr === currentStr) {
-      // still sync mutasi-kas separately if it changed
+      // Still sync mutasi-kas separately if it changed
       if (mutasiKas) {
         const cur = localStorage.getItem("siskeudes_mutasi_kas");
         const inc = JSON.stringify(mutasiKas);
@@ -49,6 +47,10 @@ function applyIncomingState(formData: Record<string, unknown>) {
       }
       return false;
     }
+
+    // Pause outgoing sync briefly to prevent echo loop:
+    // incoming server state → localStorage write → saveState debounce → re-push to server
+    localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 3000));
 
     localStorage.setItem("siskeudes_state", mergedStr);
     localStorage.setItem("siskeudes_app_state", mergedStr);
@@ -62,45 +64,60 @@ function applyIncomingState(formData: Record<string, unknown>) {
   }
 }
 
-function useGroupRealtimeSyncConvex() {
-  const sessionId = getSessionId();
-  const [groupId, setGroupId] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem("siskeudes_group_id");
-    } catch {
-      return null;
-    }
-  });
+export function useGroupRealtimeSync() {
+  const { groupId, sessionId } = useGroupContext();
+  const prevUpdatedAt = useRef<number | null>(null);
+  const initialPullDone = useRef(false);
 
+  // Reactive subscription to groupStates — this is the core realtime mechanism.
+  // When ANY user in the group writes via groupStates.merge, Convex pushes the update
+  // to all subscribers automatically.
   const doc = useQuery(
     anyApi.groupStates.get,
-    { groupId: (groupId || undefined) as never },
+    groupId ? { groupId: groupId as never } : "skip",
   ) as
     | { state?: unknown; updatedAt?: number; lastSessionId?: string }
     | null
     | undefined;
 
+  // Initial pull: when first subscribing to a group, apply server state to localStorage
+  // This ensures latecomers immediately see what teammates already saved.
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "siskeudes_group_id") {
-        try {
-          setGroupId(localStorage.getItem("siskeudes_group_id"));
-        } catch {
-          setGroupId(null);
-        }
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+    if (!groupId) {
+      initialPullDone.current = false;
+      return;
+    }
+    if (initialPullDone.current) return;
+    if (doc === undefined) return; // Still loading
+    if (!doc || !doc.state || typeof doc.state !== "object") {
+      initialPullDone.current = true;
+      return;
+    }
+    initialPullDone.current = true;
+    prevUpdatedAt.current = doc.updatedAt ?? null;
+    // Apply server state on initial load (even if it's our own last write)
+    applyIncomingState(doc.state as Record<string, unknown>);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId, doc]);
 
+  // Apply incoming state when doc changes (after initial pull)
   useEffect(() => {
     if (!groupId) return;
+    if (!initialPullDone.current) return;
     if (!doc || !doc.state || typeof doc.state !== "object") return;
+    
+    // Skip if this is our own write
     if (doc.lastSessionId && doc.lastSessionId === sessionId) return;
+    
+    // Skip if updatedAt hasn't changed (initial mount with same data)
+    if (doc.updatedAt === prevUpdatedAt.current) return;
+    prevUpdatedAt.current = doc.updatedAt ?? null;
+
     const lastWriteAt = getLastLocalWriteAt();
     const msSinceWrite = Date.now() - lastWriteAt;
+    
     if (lastWriteAt > 0 && msSinceWrite >= 0 && msSinceWrite < 2500) {
+      // Conflict: user just wrote locally, delay applying remote update
       toast.warning("Ada update dari anggota lain saat Anda baru mengisi. Update diterapkan sebentar lagi.", { duration: 2200 });
       const t = setTimeout(() => {
         const applied = applyIncomingState(doc.state as Record<string, unknown>);
@@ -108,12 +125,13 @@ function useGroupRealtimeSyncConvex() {
       }, 2600);
       return () => clearTimeout(t);
     }
-    {
-      const applied = applyIncomingState(doc.state as Record<string, unknown>);
-      if (applied) toast.info("Data kelompok diperbarui", { duration: 800 });
-    }
-  }, [groupId, doc?.updatedAt]);
+    
+    const applied = applyIncomingState(doc.state as Record<string, unknown>);
+    if (applied) toast.info("Data kelompok diperbarui", { duration: 800 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId, doc?.updatedAt, doc?.lastSessionId, sessionId]);
 
+  // Handle manual pull requests
   useEffect(() => {
     const onManualPull = () => {
       if (!doc || !doc.state || typeof doc.state !== "object") return;
@@ -121,7 +139,6 @@ function useGroupRealtimeSyncConvex() {
     };
     window.addEventListener("siskeudes:request-group-pull", onManualPull);
     return () => window.removeEventListener("siskeudes:request-group-pull", onManualPull);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc?.updatedAt]);
 }
-
-export const useGroupRealtimeSync = useGroupRealtimeSyncConvex;

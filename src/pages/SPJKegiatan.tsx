@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, X, Save, Printer, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
+import { useEditingPresence } from "@/hooks/use-editing-presence";
 
 type Mode = "view" | "add" | "edit";
 // Top-level menus mirror the previous structure: 4 sub-tabs for SPJ Panjar + Sisa Panjar
@@ -23,6 +24,9 @@ type ActiveTab = "spj" | "rincian" | "kwitansi" | "potongan" | "sisa";
 export default function SPJKegiatan() {
   const [state, setState] = useState(loadState());
   const [activeTab, setActiveTab] = useState<ActiveTab>("spj");
+  const { setMyModule } = useEditingPresence();
+
+  useEffect(() => { setMyModule("spj"); return () => setMyModule(null); }, [setMyModule]);
 
   useEffect(() => {
     const onUpd = () => setState(loadState());

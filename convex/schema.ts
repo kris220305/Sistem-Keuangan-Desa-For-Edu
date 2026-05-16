@@ -33,6 +33,21 @@ export default defineSchema({
     lastSessionId: v.string(),
   }).index("by_groupId", ["groupId"]),
 
+  // Chunked group state — stores state per category per group.
+  // This reduces sync payload size: only the changed category is written/read.
+  // Categories: pendapatan, belanja, pembiayaan, penerimaan, silpa, spp,
+  //   pencairan, penyetoranPajak, saldoAwal, spjPanjar, sisaPanjar, jurnalUmum, kegiatanAnggaran
+  groupStateChunks: defineTable({
+    groupId: v.id("groups"),
+    category: v.string(),
+    data: v.any(), // array of entities for this category
+    meta: v.optional(v.any()), // __meta entries for this category
+    updatedAt: v.number(),
+    lastSessionId: v.string(),
+  })
+    .index("by_groupId_category", ["groupId", "category"])
+    .index("by_groupId", ["groupId"]),
+
   adminSessions: defineTable({
     tokenHash: v.string(),
     createdAt: v.number(),

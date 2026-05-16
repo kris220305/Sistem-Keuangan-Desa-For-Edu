@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import { useEditingPresence } from "@/hooks/use-editing-presence";
 
 type Mode = "view" | "tambah" | "ubah";
 
@@ -18,6 +19,13 @@ export default function BelanjaDesa() {
   const [selectedBidang, setSelectedBidang] = useState("");
   const [selectedKegiatan, setSelectedKegiatan] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { setMyModule } = useEditingPresence();
+
+  // Report editing presence
+  useEffect(() => {
+    setMyModule("belanja");
+    return () => setMyModule(null);
+  }, [setMyModule]);
   const [mode, setMode] = useState<Mode>("view");
 
   const rekeningBelanja = getRekeningDetail("belanja");
@@ -33,6 +41,13 @@ export default function BelanjaDesa() {
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => { setItems(loadState().belanja); }, []);
+
+  // Listen for realtime updates from group members
+  useEffect(() => {
+    const onUpdate = () => setItems(loadState().belanja);
+    window.addEventListener("siskeudes:state-updated", onUpdate);
+    return () => window.removeEventListener("siskeudes:state-updated", onUpdate);
+  }, []);
 
   const save = (newItems: BelanjaItem[]) => {
     setItems(newItems);

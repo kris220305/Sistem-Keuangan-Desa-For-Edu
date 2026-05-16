@@ -3,6 +3,28 @@ import { v } from "convex/values";
 import { AnggaranSchema } from "./validators/AnggaranSchema";
 import { auditUtils, writeAuditLog } from "./_shared/audit";
 
+/**
+ * groupStates — monolithic shared state per group.
+ * 
+ * Current architecture: one document per group containing ALL form data.
+ * The merge uses per-entity CRDT (version + Lamport timestamp + session tiebreaker)
+ * so concurrent edits to DIFFERENT entities within the same collection don't conflict.
+ * 
+ * TODO: Modularize into per-category tables for better scalability:
+ *   - groupPendapatan (pendapatan collection only)
+ *   - groupBelanja (belanja collection only)
+ *   - groupPembiayaan (pembiayaan collection only)
+ *   - groupSPP (spp + pencairan + spjPanjar + sisaPanjar)
+ *   - groupPenerimaan (penerimaan + silpa)
+ *   - groupPembukuan (saldoAwal + jurnalUmum + penyetoranPajak)
+ *   - groupKas (mutasiKas)
+ * 
+ * The groupStateChunks table is already populated as a side-effect of merge()
+ * and can be used for per-category subscriptions in the future.
+ * Migration path: switch frontend useQuery from groupStates.get to
+ * groupStateChunks.getCategory per page, then deprecate the monolithic table.
+ */
+
 const COLLECTIONS = [
   "pendapatan",
   "belanja",
@@ -31,10 +53,10 @@ async function assertCanWriteGroupState(db: any, groupId: any, sessionId: string
     .query("groupMembers")
     .withIndex("by_groupId_session", (q: any) => q.eq("groupId", groupId).eq("sessionId", sessionId))
     .first();
-  if (!member) throw new Error("Insufficient permissions");
+  if (!member) throw new Error("Insufficient permissions: Anda belum bergabung ke kelompok ini");
   const perms = (member as { permissions?: unknown }).permissions;
-  if (!Array.isArray(perms)) return;
-  if (!perms.includes("write")) throw new Error("Insufficient permissions");
+  if (!Array.isArray(perms)) return; // No permissions array = allow all (backward compat)
+  if (!perms.includes("write")) throw new Error("Insufficient permissions: Anda tidak memiliki akses write");
 }
 
 async function assertIsLeader(db: any, groupId: any, sessionId: string) {
@@ -197,26 +219,44 @@ export const merge = mutationGeneric({
     const merged = existing ? mergeStatesServer(existing.state, state) : state;
     const oldHash = existing ? await auditUtils.hashJson(existing.state) : null;
     const newHash = await auditUtils.hashJson(merged);
+    const now = Date.now();
     const payload = {
       groupId,
       state: merged,
-      updatedAt: Date.now(),
+      updatedAt: now,
       lastSessionId: sessionId,
     };
+    let resultId: any;
     if (existing) {
       await db.patch(existing._id, payload);
-      await writeAuditLog(db, {
-        actorId: sessionId,
-        actionType: "groupStates.merge",
-        targetType: "groups",
-        targetId: String(groupId),
-        fieldName: "stateHash",
-        oldValue: oldHash,
-        newValue: newHash,
-      });
-      return existing._id;
+      resultId = existing._id;
+    } else {
+      resultId = await db.insert("groupStates", payload);
     }
-    const id = await db.insert("groupStates", payload);
+
+    // Side-effect: populate groupStateChunks for per-category subscriptions
+    const mergedObj = asObj(merged);
+    const mergedMeta = asObj(mergedObj.__meta);
+    for (const col of COLLECTIONS) {
+      const arr = mergedObj[col];
+      if (!Array.isArray(arr)) continue;
+      // Extract meta entries for this category
+      const catMeta: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(mergedMeta)) {
+        if (k.startsWith(`${col}:`)) catMeta[k] = v;
+      }
+      const chunkDoc = await db
+        .query("groupStateChunks")
+        .withIndex("by_groupId_category", (q: any) => q.eq("groupId", groupId).eq("category", col))
+        .unique();
+      const chunkPayload = { groupId, category: col, data: arr, meta: catMeta, updatedAt: now, lastSessionId: sessionId };
+      if (chunkDoc) {
+        await db.patch(chunkDoc._id, chunkPayload);
+      } else {
+        await db.insert("groupStateChunks", chunkPayload);
+      }
+    }
+
     await writeAuditLog(db, {
       actorId: sessionId,
       actionType: "groupStates.merge",
@@ -226,7 +266,7 @@ export const merge = mutationGeneric({
       oldValue: oldHash,
       newValue: newHash,
     });
-    return id;
+    return resultId;
   },
 });
 
@@ -250,6 +290,14 @@ export const clear = mutationGeneric({
         oldValue: oldHash,
         newValue: null,
       });
+    }
+    // Also clear all groupStateChunks for this group
+    const chunks = await db
+      .query("groupStateChunks")
+      .withIndex("by_groupId", (q: any) => q.eq("groupId", groupId))
+      .take(50);
+    for (const c of chunks) {
+      await db.delete(c._id);
     }
     return true;
   },

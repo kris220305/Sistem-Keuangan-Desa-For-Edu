@@ -24,6 +24,7 @@ function makeDb(opts: {
         if (table === "groupMembers" && index === "by_groupId") {
           return {
             collect: async () => (opts.membersByGroup?.[groupId] ?? []),
+            take: async () => (opts.membersByGroup?.[groupId] ?? []),
             first: async () => (opts.firstByGroup?.[groupId] ?? null),
           };
         }
@@ -35,7 +36,7 @@ function makeDb(opts: {
             },
           };
         }
-        return { collect: async () => [], first: async () => null };
+        return { collect: async () => [], take: async () => [], first: async () => null };
       },
     };
   });

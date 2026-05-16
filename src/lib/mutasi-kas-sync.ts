@@ -3,6 +3,7 @@ import { convex, isConvexEnabled } from "@/integrations/convex/client";
 import { getSessionId, upsertSession } from "@/lib/session-manager";
 import { loadState } from "@/data/app-state";
 import type { MutasiKasItem } from "@/data/mutasi-kas";
+import { toast } from "sonner";
 
 export function syncMutasiKasToSession(mutasiKas: MutasiKasItem[]) {
   try {
@@ -15,15 +16,26 @@ export function syncMutasiKasToSession(mutasiKas: MutasiKasItem[]) {
     const groupId = localStorage.getItem("siskeudes_group_id");
     if (workMode === "group" && groupId && isConvexEnabled && convex) {
       const sessionId = getSessionId();
-      void convex.mutation(anyApi.groupStates.merge, {
+      convex.mutation(anyApi.groupStates.merge, {
         groupId: groupId as never,
         sessionId,
         state: payload,
+      }).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[mutasi-kas-sync] groupStates.merge failed:', msg);
+        if (msg.includes('Insufficient permissions')) {
+          toast.error('Gagal sync mutasi kas: Anda belum memiliki permission write.');
+        } else {
+          toast.error('Gagal sync mutasi kas ke server.');
+        }
       });
     } else {
-      void upsertSession({ form_data: payload });
+      upsertSession({ form_data: payload }).catch((err) => {
+        console.error('[mutasi-kas-sync] upsertSession failed:', err instanceof Error ? err.message : err);
+      });
     }
-  } catch {
+  } catch (err) {
+    console.error('[mutasi-kas-sync] unexpected error:', err);
   }
 }
 
@@ -31,7 +43,6 @@ export function saveMutasiKasAndSync(mutasiKas: MutasiKasItem[], saveLocal: (ite
   saveLocal(mutasiKas);
   try {
     window.dispatchEvent(new CustomEvent("siskeudes:mutasi-kas-updated"));
-  } catch {
-  }
+  } catch { /* ignore */ }
   syncMutasiKasToSession(mutasiKas);
 }

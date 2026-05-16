@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { useEditingPresence } from "@/hooks/use-editing-presence";
 
 type Mode = "view" | "tambah" | "ubah";
 
@@ -18,6 +19,9 @@ export default function PembiayaanDesa() {
   const [items, setItems] = useState<PembiayaanItem[]>([]);
   const [activeTab, setActiveTab] = useState<"penerimaan" | "pengeluaran">("penerimaan");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { setMyModule } = useEditingPresence();
+
+  useEffect(() => { setMyModule("pembiayaan"); return () => setMyModule(null); }, [setMyModule]);
   const [mode, setMode] = useState<Mode>("view");
 
   const rekeningPembiayaan = getRekeningDetail("pembiayaan");
@@ -33,6 +37,13 @@ export default function PembiayaanDesa() {
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => { setItems(loadState().pembiayaan); }, []);
+
+  // Listen for realtime updates from group members
+  useEffect(() => {
+    const onUpdate = () => setItems(loadState().pembiayaan);
+    window.addEventListener("siskeudes:state-updated", onUpdate);
+    return () => window.removeEventListener("siskeudes:state-updated", onUpdate);
+  }, []);
 
   const save = (newItems: PembiayaanItem[]) => {
     setItems(newItems);

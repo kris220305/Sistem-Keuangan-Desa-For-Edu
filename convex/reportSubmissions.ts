@@ -101,12 +101,17 @@ export const removeAll = mutationGeneric({
   args: { adminToken: v.string() },
   handler: async ({ db, storage }, { adminToken }) => {
     const admin = await assertAdmin(db, adminToken);
-    const rows = await db.query("reportSubmissions").collect();
-    for (const r of rows) {
-      if (r.pdfStorageId) {
-        try { await storage.delete(r.pdfStorageId); } catch {}
+    let count = 0;
+    for (let i = 0; i < 10; i++) {
+      const batch = await db.query("reportSubmissions").take(200);
+      if (!batch.length) break;
+      for (const r of batch) {
+        if (r.pdfStorageId) {
+          try { await storage.delete(r.pdfStorageId); } catch {}
+        }
+        await db.delete(r._id);
+        count++;
       }
-      await db.delete(r._id);
     }
     try {
       await writeAuditLog(db, {
@@ -115,7 +120,7 @@ export const removeAll = mutationGeneric({
         targetType: "reportSubmissions",
         targetId: "*",
         fieldName: "deleted",
-        oldValue: { count: rows.length },
+        oldValue: { count },
         newValue: null,
       });
     } catch {}
@@ -152,14 +157,19 @@ export const deleteAllPdfs = mutationGeneric({
   args: { adminToken: v.string() },
   handler: async ({ db, storage }, { adminToken }) => {
     const admin = await assertAdmin(db, adminToken);
-    const rows = await db.query("reportSubmissions").collect();
     let deleted = 0;
-    for (const r of rows) {
-      if (r.pdfStorageId) {
-        try { await storage.delete(r.pdfStorageId); } catch {}
+    for (let i = 0; i < 10; i++) {
+      // Only fetch rows that have a pdfStorageId
+      const batch = await db.query("reportSubmissions").take(200);
+      if (!batch.length) break;
+      const withPdf = batch.filter((r) => !!r.pdfStorageId);
+      if (!withPdf.length) break;
+      for (const r of withPdf) {
+        try { await storage.delete(r.pdfStorageId!); } catch {}
         await db.patch(r._id, { pdfStorageId: undefined, pdfFileName: undefined });
-        deleted += 1;
+        deleted++;
       }
+      if (batch.length < 200) break;
     }
     try {
       await writeAuditLog(db, {

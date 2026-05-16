@@ -14,6 +14,9 @@ import NotFound from "@/pages/NotFound";
 import { lazy, Suspense, type ReactNode } from "react";
 import { ConvexProvider } from "convex/react";
 import { convex, isConvexEnabled } from "@/integrations/convex/client";
+import { GroupProvider } from "@/hooks/use-group-context";
+import { SyncStatusProvider } from "@/hooks/use-sync-status";
+import SyncStatusIndicator from "@/components/SyncStatusIndicator";
 
 const ParameterBidangKegiatan = lazy(() => import("@/pages/ParameterBidangKegiatan"));
 const ParameterSumberDana = lazy(() => import("@/pages/ParameterSumberDana"));
@@ -69,48 +72,53 @@ const MaybeConvexProvider = ({ children }: { children: ReactNode }) => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <MaybeConvexProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/admin" element={<AdminLogin />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route element={<SiteLockGuardLayout />}>
-                <Route path="/" element={<Beranda />} />
-                <Route path="/data-umum" element={<DataUmumDesa />} />
-                <Route path="/group-room" element={<GroupRoom />} />
-                <Route path="/parameter/bidang-kegiatan" element={<ParameterBidangKegiatan />} />
-                <Route path="/parameter/sumber-dana" element={<ParameterSumberDana />} />
-                <Route path="/parameter/rekening" element={<ParameterRekening />} />
-                <Route path="/parameter/output-kegiatan" element={<ParameterOutputKegiatan />} />
-                <Route path="/penganggaran/pendapatan" element={<PendapatanDesa />} />
-                <Route path="/penganggaran/belanja" element={<BelanjaDesa />} />
-                <Route path="/penganggaran/pembiayaan" element={<PembiayaanDesa />} />
-                <Route path="/detail-kegiatan" element={<DetailKegiatan />} />
-                <Route path="/penatausahaan/penerimaan" element={<PenerimaanDesa />} />
-                <Route path="/penatausahaan/spp-panjar" element={<SPPPanjar />} />
-                <Route path="/penatausahaan/spp-definitif" element={<SPPDefinitif />} />
-                <Route path="/penatausahaan/spp-pembiayaan" element={<SPPPembiayaan />} />
-                <Route path="/penatausahaan/spj" element={<SPJKegiatan />} />
-                <Route path="/penatausahaan/penyetoran-pajak" element={<PenyetoranPajak />} />
-                <Route path="/penatausahaan/mutasi-kas" element={<MutasiKas />} />
-                <Route path="/pembukuan/saldo-awal" element={<SaldoAwal />} />
-                <Route path="/pembukuan/jurnal-umum" element={<JurnalUmum />} />
-                <Route path="/laporan/lra" element={<LaporanLRA />} />
-                <Route path="/laporan/lra-desa" element={<LaporanLRAPerKegiatan />} />
-                <Route path="/laporan/neraca" element={<LaporanNeraca />} />
-                <Route path="/laporan/bku" element={<LaporanBKU />} />
-                <Route path="/laporan/bkp-pajak" element={<LaporanBKPPajak />} />
-                <Route path="/laporan/penjabaran" element={<LaporanPenjabaran />} />
-                <Route path="/tentang" element={<TentangAplikasi />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
+      <GroupProvider>
+        <SyncStatusProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <SyncStatusIndicator />
+            <BrowserRouter>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/admin" element={<AdminLogin />} />
+                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                  <Route element={<SiteLockGuardLayout />}>
+                    <Route path="/" element={<Beranda />} />
+                    <Route path="/data-umum" element={<DataUmumDesa />} />
+                    <Route path="/group-room" element={<GroupRoom />} />
+                    <Route path="/parameter/bidang-kegiatan" element={<ParameterBidangKegiatan />} />
+                    <Route path="/parameter/sumber-dana" element={<ParameterSumberDana />} />
+                    <Route path="/parameter/rekening" element={<ParameterRekening />} />
+                    <Route path="/parameter/output-kegiatan" element={<ParameterOutputKegiatan />} />
+                    <Route path="/penganggaran/pendapatan" element={<PendapatanDesa />} />
+                    <Route path="/penganggaran/belanja" element={<BelanjaDesa />} />
+                    <Route path="/penganggaran/pembiayaan" element={<PembiayaanDesa />} />
+                    <Route path="/detail-kegiatan" element={<DetailKegiatan />} />
+                    <Route path="/penatausahaan/penerimaan" element={<PenerimaanDesa />} />
+                    <Route path="/penatausahaan/spp-panjar" element={<SPPPanjar />} />
+                    <Route path="/penatausahaan/spp-definitif" element={<SPPDefinitif />} />
+                    <Route path="/penatausahaan/spp-pembiayaan" element={<SPPPembiayaan />} />
+                    <Route path="/penatausahaan/spj" element={<SPJKegiatan />} />
+                    <Route path="/penatausahaan/penyetoran-pajak" element={<PenyetoranPajak />} />
+                    <Route path="/penatausahaan/mutasi-kas" element={<MutasiKas />} />
+                    <Route path="/pembukuan/saldo-awal" element={<SaldoAwal />} />
+                    <Route path="/pembukuan/jurnal-umum" element={<JurnalUmum />} />
+                    <Route path="/laporan/lra" element={<LaporanLRA />} />
+                    <Route path="/laporan/lra-desa" element={<LaporanLRAPerKegiatan />} />
+                    <Route path="/laporan/neraca" element={<LaporanNeraca />} />
+                    <Route path="/laporan/bku" element={<LaporanBKU />} />
+                    <Route path="/laporan/bkp-pajak" element={<LaporanBKPPajak />} />
+                    <Route path="/laporan/penjabaran" element={<LaporanPenjabaran />} />
+                    <Route path="/tentang" element={<TentangAplikasi />} />
+                  </Route>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </TooltipProvider>
+        </SyncStatusProvider>
+      </GroupProvider>
     </MaybeConvexProvider>
   </QueryClientProvider>
 );

@@ -264,23 +264,34 @@ export const removeAll = mutationGeneric({
   handler: async ({ db }, { adminToken }) => {
     const admin = await assertAdmin(db, adminToken);
 
-    const groupIds = (await db.query("groups").collect()).map((g: any) => g._id);
-    for (const gid of groupIds) {
+    // Delete groups in batches (max 200 per table to stay within Convex limits)
+    let groupCount = 0;
+    const groups = await db.query("groups").take(200);
+    for (const g of groups) {
       const members = await db
         .query("groupMembers")
-        .withIndex("by_groupId", (q: any) => q.eq("groupId", gid))
-        .collect();
+        .withIndex("by_groupId", (q: any) => q.eq("groupId", g._id))
+        .take(200);
       for (const m of members) await db.delete(m._id);
       const state = await db
         .query("groupStates")
-        .withIndex("by_groupId", (q: any) => q.eq("groupId", gid))
+        .withIndex("by_groupId", (q: any) => q.eq("groupId", g._id))
         .unique();
       if (state) await db.delete(state._id);
-      await db.delete(gid);
+      await db.delete(g._id);
+      groupCount++;
     }
 
-    const sessions = await db.query("userSessions").collect();
-    for (const s of sessions) await db.delete(s._id);
+    // Delete sessions in batches
+    let sessionCount = 0;
+    for (let i = 0; i < 10; i++) {
+      const batch = await db.query("userSessions").take(200);
+      if (!batch.length) break;
+      for (const s of batch) {
+        await db.delete(s._id);
+        sessionCount++;
+      }
+    }
 
     try {
       await writeAuditLog(db, {
@@ -289,7 +300,7 @@ export const removeAll = mutationGeneric({
         targetType: "userSessions",
         targetId: "*",
         fieldName: "deleted",
-        oldValue: { sessions: sessions.length, groups: groupIds.length },
+        oldValue: { sessions: sessionCount, groups: groupCount },
         newValue: null,
       });
     } catch {}
@@ -301,9 +312,24 @@ export const clearAllFormProgress = mutationGeneric({
   args: { adminToken: v.string() },
   handler: async ({ db }, { adminToken }) => {
     const admin = await assertAdmin(db, adminToken);
-    const sessions = await db.query("userSessions").collect();
-    for (const s of sessions) {
-      await db.patch(s._id, { formProgress: {}, formData: null });
+    let count = 0;
+    // Process in batches to avoid hitting Convex limits
+    for (let i = 0; i < 10; i++) {
+      const batch = await db
+        .query("userSessions")
+        .withIndex("by_lastActive")
+        .order("desc")
+        .take(200);
+      if (!batch.length) break;
+      const needsPatch = batch.filter(
+        (s) => s.formProgress && Object.keys(s.formProgress as object).length > 0 || s.formData
+      );
+      if (!needsPatch.length) break;
+      for (const s of needsPatch) {
+        await db.patch(s._id, { formProgress: {}, formData: null });
+        count++;
+      }
+      if (batch.length < 200) break;
     }
     try {
       await writeAuditLog(db, {
@@ -312,7 +338,7 @@ export const clearAllFormProgress = mutationGeneric({
         targetType: "userSessions",
         targetId: "*",
         fieldName: "formProgress",
-        oldValue: { sessions: sessions.length },
+        oldValue: { sessions: count },
         newValue: {},
       });
     } catch {}

@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Pencil, Trash2, X, Save, Printer, DoorOpen, Search } from "lucide-react";
 import { toast } from "sonner";
 import { rekeningData } from "@/data/rekening-data";
+import { useEditingPresence } from "@/hooks/use-editing-presence";
 
 type Mode = "view" | "add" | "edit";
 
@@ -17,6 +18,9 @@ export default function SaldoAwal() {
   const [items, setItems] = useState<SaldoAwalItem[]>([]);
   const [selected, setSelected] = useState<SaldoAwalItem | null>(null);
   const [mode, setMode] = useState<Mode>("view");
+  const { setMyModule } = useEditingPresence();
+
+  useEffect(() => { setMyModule("saldo_awal"); return () => setMyModule(null); }, [setMyModule]);
 
   // Rekening neraca (aset, kewajiban, ekuitas)
   const allDetailRekening = rekeningData.filter(r =>
@@ -26,6 +30,13 @@ export default function SaldoAwal() {
   const [form, setForm] = useState({ kodeRekening: "", namaRekening: "", debet: 0, kredit: 0 });
 
   useEffect(() => { setItems(loadState().saldoAwal); }, []);
+
+  // Listen for realtime updates from group members
+  useEffect(() => {
+    const onUpdate = () => setItems(loadState().saldoAwal);
+    window.addEventListener("siskeudes:state-updated", onUpdate);
+    return () => window.removeEventListener("siskeudes:state-updated", onUpdate);
+  }, []);
 
   const save = (newItems: SaldoAwalItem[]) => {
     setItems(newItems);

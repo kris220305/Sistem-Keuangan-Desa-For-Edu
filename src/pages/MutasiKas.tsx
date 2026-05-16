@@ -14,6 +14,7 @@ import { loadMutasiKas, saveMutasiKasLocal, type MutasiKasItem } from "@/data/mu
 import { getEffectivePencairan, getSaldoTunai } from "@/lib/financial-engine";
 import { saveMutasiKasAndSync } from "@/lib/mutasi-kas-sync";
 import { appendMutasiKasAudit } from "@/data/mutasi-kas-audit";
+import { useEditingPresence } from "@/hooks/use-editing-presence";
 
 function saveMutasi(d: MutasiKasItem[]) {
   saveMutasiKasAndSync(d, saveMutasiKasLocal);
@@ -28,6 +29,9 @@ export default function MutasiKas() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTanggal, setConfirmTanggal] = useState(new Date().toISOString().slice(0, 10));
   const [confirmKeterangan, setConfirmKeterangan] = useState("");
+  const { setMyModule } = useEditingPresence();
+
+  useEffect(() => { setMyModule("mutasi_kas"); return () => setMyModule(null); }, [setMyModule]);
   const [confirmNoBukti, setConfirmNoBukti] = useState("");
   const [confirmRekening, setConfirmRekening] = useState("");
   const [confirmNamaBank, setConfirmNamaBank] = useState("BPD Simulasi");

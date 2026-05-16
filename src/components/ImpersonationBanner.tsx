@@ -28,8 +28,8 @@ export default function ImpersonationBanner() {
       if (result.ok) {
         setLastSync(new Date());
         if (result.changed) {
-          window.location.reload();
-          return;
+          // Notify all components to re-read state from localStorage
+          window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
         }
       }
       setRefreshing(false);
@@ -59,8 +59,8 @@ export default function ImpersonationBanner() {
     const result = await refreshImpersonatedData();
     if (result.ok) {
       setLastSync(new Date());
-      window.location.reload();
-      return;
+      // Notify all components to re-read state
+      window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
     }
     setRefreshing(false);
   };

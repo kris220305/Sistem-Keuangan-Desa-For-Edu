@@ -32,7 +32,9 @@ export async function getVillageGroupLimit(villageId: string): Promise<VillageGr
   if (isConvexEnabled && convex) {
     try {
       return await getConvex().query(anyApi.groupLimits.getForVillage, { villageId, villageName: "" } as any);
-    } catch {}
+    } catch (err) {
+      console.error('[session] getVillageGroupLimit failed:', err instanceof Error ? err.message : err);
+    }
   }
   return {
     village_id: villageId,
@@ -109,7 +111,9 @@ export async function upsertSession(data: {
       formData: data.form_data,
     });
     try { localStorage.setItem(HAS_CONVEX_SESSION_KEY, "true"); } catch {}
-  } catch {}
+  } catch (err) {
+    console.error('[session] upsertSession failed:', err instanceof Error ? err.message : err);
+  }
 }
 
 export async function heartbeat() {
@@ -141,7 +145,9 @@ export async function heartbeat() {
         groupId: groupId ? (groupId as never) : undefined,
       });
       try { localStorage.setItem(HAS_CONVEX_SESSION_KEY, "true"); } catch {}
-    } catch {}
+    } catch (err) {
+      console.error('[heartbeat] upsert failed:', err instanceof Error ? err.message : err);
+    }
   }
 }
 
@@ -203,7 +209,9 @@ export async function deleteSession(sessionId: string) {
       const adminToken = getAdminToken();
       if (adminToken) await getConvex().mutation(anyApi.sessions.remove, { adminToken, sessionId } as any);
       await getConvex().mutation(anyApi.groups.leaveGroup, { sessionId });
-    } catch {}
+    } catch (err) {
+      console.error('[session] deleteSession failed:', err instanceof Error ? err.message : err);
+    }
   }
 }
 
@@ -272,9 +280,8 @@ export async function deleteAllReportPdfs() {
 }
 
 export async function trackFormProgress(formKey: string) {
-  // Cukup update progress di row sendiri. Anggota lain akan mendapat
-  // notifikasi via realtime (postgres_changes) tanpa perlu kita menulis
-  // ke baris mereka. Ini memangkas N+1 query/write per progress flag.
+  // Update progress di row sendiri. Anggota lain mendapat notifikasi via
+  // Convex realtime subscription tanpa perlu menulis ke baris mereka.
   await upsertSession({ form_progress: { [formKey]: true } });
 }
 
@@ -367,6 +374,8 @@ export async function joinGroupSmart(
   if (!groupId) throw new Error("Gagal bergabung ke kelompok");
   localStorage.setItem("siskeudes_group_id", groupId);
   await upsertSession({ work_mode: "group", group_id: groupId });
+  // Dispatch group-changed event so all hooks/components react immediately
+  window.dispatchEvent(new CustomEvent("siskeudes:group-changed", { detail: { groupId } }));
   return groupId;
 }
 
@@ -379,8 +388,12 @@ export async function leaveCurrentGroup() {
   try { localStorage.removeItem("siskeudes_group_id"); } catch {}
   try {
     await getConvex().mutation(anyApi.groups.leaveGroup, { sessionId } as any);
-  } catch {}
+  } catch (err) {
+    console.error('[session] leaveGroup failed:', err);
+  }
   await upsertSession({ work_mode: "individual", group_id: null });
+  // Dispatch group-changed event
+  window.dispatchEvent(new CustomEvent("siskeudes:group-changed", { detail: { groupId: null } }));
 }
 
 export async function isCurrentUserLeader(): Promise<boolean> {
@@ -448,7 +461,10 @@ export async function syncFormDataToGroup() {
       sessionId,
       state: parsedState as any,
     } as any);
-  } catch {}
+  } catch (err) {
+    console.error('[sync] syncFormDataToGroup failed:', err instanceof Error ? err.message : err);
+    throw err; // Re-throw so callers can handle
+  }
 }
 
 export async function loadGroupFormData(): Promise<Record<string, unknown> | null> {

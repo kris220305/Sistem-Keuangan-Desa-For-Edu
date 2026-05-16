@@ -3,12 +3,15 @@ import { useEffect, useState } from "react";
 import TopMenuBar from "./TopMenuBar";
 import ScreenShareConsent from "./ScreenShareConsent";
 import ImpersonationBanner from "./ImpersonationBanner";
+import EditingPresenceBar from "./EditingPresenceBar";
 import { useGroupRealtimeSync } from "@/hooks/use-group-realtime-sync";
+import { useSyncStatusListener } from "@/hooks/use-sync-status-listener";
 import bgLandscape from "@/assets/bg-sawah-sunset.jpg";
 import { flushSaveStateNow } from "@/data/app-state";
 
 export default function AppLayout() {
   useGroupRealtimeSync();
+  useSyncStatusListener();
   const location = useLocation();
   const [transitioning, setTransitioning] = useState(false);
   const [displayLocation, setDisplayLocation] = useState(location);
@@ -44,6 +47,9 @@ export default function AppLayout() {
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Admin impersonation banner (only renders when active) */}
       <ImpersonationBanner />
+
+      {/* Editing presence bar (shows who is editing what) */}
+      <EditingPresenceBar />
 
       {/* Top Menu Bar */}
       <TopMenuBar />

@@ -20,6 +20,7 @@ import { terbilangRupiah } from "@/lib/terbilang-id";
 import { Banknote, Landmark, Layers, Printer, Plus, Pencil, Trash2, X, Save, DoorOpen, List, FileText, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { useEditingPresence } from "@/hooks/use-editing-presence";
 
 type Mode = "view" | "tambah" | "ubah";
 type ActiveTab = "silpa" | "tunai" | "bank";
@@ -47,6 +48,13 @@ function SilpaTab() {
   const [rincianForm, setRincianForm] = useState<Omit<SilpaRincian, "id">>({ kodeRekening: "", namaRekening: "", debet: 0, kredit: 0 });
 
   useEffect(() => { setItems(loadState().silpa || []); }, []);
+
+  // Listen for realtime updates from group members
+  useEffect(() => {
+    const onUpdate = () => setItems(loadState().silpa || []);
+    window.addEventListener("siskeudes:state-updated", onUpdate);
+    return () => window.removeEventListener("siskeudes:state-updated", onUpdate);
+  }, []);
   useEffect(() => { if (mode !== "view") setDetailTab("data"); }, [mode]);
   useEffect(() => {
     if (mode !== "view" || selectedId) setMobilePane("detail");
@@ -542,6 +550,13 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   const [rincianForm, setRincianForm] = useState<Omit<PenerimaanRincian, "id">>({ kodeRekening: "", namaRekening: "", sumberDana: "", nilai: 0 });
 
   useEffect(() => { setAllItems(loadState().penerimaan || []); }, []);
+
+  // Listen for realtime updates from group members
+  useEffect(() => {
+    const onUpdate = () => setAllItems(loadState().penerimaan || []);
+    window.addEventListener("siskeudes:state-updated", onUpdate);
+    return () => window.removeEventListener("siskeudes:state-updated", onUpdate);
+  }, []);
 
   useEffect(() => {
     if (mode === "view") return;
@@ -1511,6 +1526,10 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
 // ===================== MAIN PAGE =====================
 export default function PenerimaanDesa() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("silpa");
+  const { setMyModule } = useEditingPresence();
+
+  useEffect(() => { setMyModule("penerimaan"); return () => setMyModule(null); }, [setMyModule]);
+
   const desaProfile = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("siskeudes_desa_profile") || "{}"); } catch { return {}; }
   }, []);

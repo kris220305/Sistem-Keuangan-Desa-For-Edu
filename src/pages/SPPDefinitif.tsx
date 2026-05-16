@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, X, Save, Printer, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
+import { useEditingPresence } from "@/hooks/use-editing-presence";
 
 type Mode = "view" | "add" | "edit";
 type ActiveTab = "spp" | "rincian" | "bukti" | "potongan";
@@ -20,6 +21,9 @@ export default function SPPDefinitif() {
   const [selected, setSelected] = useState<SPPItem | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [activeTab, setActiveTab] = useState<ActiveTab>("spp");
+  const { setMyModule } = useEditingPresence();
+
+  useEffect(() => { setMyModule("spp_definitif"); return () => setMyModule(null); }, [setMyModule]);
 
   // SPP form
   const [form, setForm] = useState({ tanggalSPP: "", nomorSPP: "", uraian: "", jumlah: 0, pembayaran: "bank" as "tunai" | "bank" });
@@ -45,6 +49,13 @@ export default function SPPDefinitif() {
 
   useEffect(() => {
     setItems(loadState().spp.filter(i => i.jenis === "definitif"));
+  }, []);
+
+  // Listen for realtime updates from group members
+  useEffect(() => {
+    const onUpdate = () => setItems(loadState().spp.filter(i => i.jenis === "definitif"));
+    window.addEventListener("siskeudes:state-updated", onUpdate);
+    return () => window.removeEventListener("siskeudes:state-updated", onUpdate);
   }, []);
 
   const save = (allItems: SPPItem[]) => {

@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Pencil, Trash2, X, Save, Printer, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
 import { rekeningData } from "@/data/rekening-data";
+import { useEditingPresence } from "@/hooks/use-editing-presence";
 
 type Mode = "view" | "add" | "edit";
 type ActiveTab = "penyetoran" | "rincianBuktiPotong";
@@ -19,6 +20,16 @@ export default function PenyetoranPajak() {
   const [selected, setSelected] = useState<PenyetoranPajakItem | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [activeTab, setActiveTab] = useState<ActiveTab>("penyetoran");
+  const { setMyModule } = useEditingPresence();
+
+  useEffect(() => { setMyModule("pajak"); return () => setMyModule(null); }, [setMyModule]);
+
+  // Listen for realtime updates from group members
+  useEffect(() => {
+    const onUpdate = () => setState(loadState());
+    window.addEventListener("siskeudes:state-updated", onUpdate);
+    return () => window.removeEventListener("siskeudes:state-updated", onUpdate);
+  }, []);
 
   const pajakRekening = rekeningData.filter(r => r.kode.startsWith("7.1"));
 

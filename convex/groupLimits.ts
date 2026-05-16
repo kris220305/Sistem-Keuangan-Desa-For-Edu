@@ -33,7 +33,7 @@ export const getForVillage = queryGeneric({
 export const listAll = queryGeneric({
   args: {},
   handler: async ({ db }) => {
-    const rows = await db.query("villageGroupLimits").collect();
+    const rows = await db.query("villageGroupLimits").take(100);
     rows.sort((a, b) => a.villageName.localeCompare(b.villageName));
     return rows.map((r) => ({
       village_id: r.villageId,

@@ -181,6 +181,7 @@ export default function DataUmumDesa() {
         ]);
         gId = (res as { groupId: string }).groupId;
         localStorage.setItem("siskeudes_group_id", gId);
+        // Pre-warm the groupStates subscription (fire-and-forget query, not a mutation)
         try { void convex.query(anyApi.groupStates.get, { groupId: gId as never }); } catch {}
       } else {
         const { joinGroupSmart } = await import("@/lib/session-manager");

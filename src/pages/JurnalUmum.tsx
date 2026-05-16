@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Pencil, Trash2, X, Save, Printer, DoorOpen, Check, Undo2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from "lucide-react";
 import { toast } from "sonner";
 import { rekeningData } from "@/data/rekening-data";
+import { useEditingPresence } from "@/hooks/use-editing-presence";
 
 type Mode = "view" | "add" | "edit";
 
@@ -17,6 +18,13 @@ export default function JurnalUmum() {
   const [entries, setEntries] = useState<JurnalUmumItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mode, setMode] = useState<Mode>("view");
+  const { setMyModule } = useEditingPresence();
+
+  // Report editing presence
+  useEffect(() => {
+    setMyModule("jurnal_umum");
+    return () => setMyModule(null);
+  }, [setMyModule]);
 
   // All detail rekening for journal entries
   const allRekening = rekeningData.filter(r => r.level === 3);
@@ -37,6 +45,16 @@ export default function JurnalUmum() {
     const jurnal = state.jurnalUmum || [];
     setEntries(jurnal);
     if (jurnal.length > 0) setCurrentIndex(0);
+  }, []);
+
+  // Listen for realtime updates from group members
+  useEffect(() => {
+    const onUpdate = () => {
+      const state = loadState();
+      setEntries(state.jurnalUmum || []);
+    };
+    window.addEventListener("siskeudes:state-updated", onUpdate);
+    return () => window.removeEventListener("siskeudes:state-updated", onUpdate);
   }, []);
 
   const current = entries[currentIndex] || null;

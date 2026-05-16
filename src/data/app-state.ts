@@ -452,7 +452,12 @@ export function mergeStates(local: AppState, remote: Partial<AppState>): AppStat
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingState: AppState | null = null;
 
-function flushPush() {
+// Sync status event dispatch for UI indicators
+function dispatchSyncEvent(status: 'syncing' | 'synced' | 'failed', error?: string) {
+  window.dispatchEvent(new CustomEvent('siskeudes:sync-status', { detail: { status, error } }));
+}
+
+async function flushPush() {
   pushTimer = null;
   const state = pendingState;
   pendingState = null;
@@ -479,29 +484,60 @@ function flushPush() {
     })();
     const payload = { ...state, mutasiKas } as unknown as Record<string, unknown>;
     localStorage.setItem('siskeudes_last_local_write_at', String(Date.now()));
+    dispatchSyncEvent('syncing');
     if (workMode === 'group' && groupId && isConvexEnabled && convex) {
       const sessionId = getSessionId();
-      void convex.mutation(anyApi.groupStates.merge, {
-        groupId: groupId as never,
-        sessionId,
-        state: payload,
-      });
+      try {
+        await convex.mutation(anyApi.groupStates.merge, {
+          groupId: groupId as never,
+          sessionId,
+          state: payload,
+        });
+        dispatchSyncEvent('synced');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[sync] groupStates.merge failed:', msg);
+        dispatchSyncEvent('failed', msg);
+        // Import toast dynamically to avoid circular deps
+        const { toast } = await import('sonner');
+        if (msg.includes('Insufficient permissions')) {
+          toast.error('Gagal sync: Anda belum memiliki permission write di kelompok ini.');
+        } else {
+          toast.error('Gagal menyimpan ke server. Data tersimpan lokal.');
+        }
+      }
     } else {
-      void upsertSession({ form_data: payload });
+      try {
+        await upsertSession({ form_data: payload });
+        dispatchSyncEvent('synced');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[sync] upsertSession failed:', msg);
+        dispatchSyncEvent('failed', msg);
+      }
     }
-  } catch { /* ignore */ }
+  } catch (err) {
+    console.error('[sync] flushPush unexpected error:', err);
+    dispatchSyncEvent('failed', err instanceof Error ? err.message : 'Unknown error');
+  }
 }
 
 export function saveState(state: AppState) {
   const prev = loadState();
   const stamped = bumpVersions(prev, state);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stamped));
-  try { localStorage.setItem('siskeudes_app_state', JSON.stringify(stamped)); } catch { /* ignore */ }
+  const json = JSON.stringify(stamped);
+  localStorage.setItem(STORAGE_KEY, json);
+  // siskeudes_app_state is a legacy alias — keep in sync but skip if unchanged
+  try {
+    if (localStorage.getItem('siskeudes_app_state') !== json) {
+      localStorage.setItem('siskeudes_app_state', json);
+    }
+  } catch { /* ignore */ }
 
   pendingState = stamped;
   if (pushTimer) clearTimeout(pushTimer);
   const delay = (() => {
-    try { return localStorage.getItem('siskeudes_work_mode') === 'group' ? 1200 : 800; } catch { return 800; }
+    try { return localStorage.getItem('siskeudes_work_mode') === 'group' ? 2000 : 1000; } catch { return 1000; }
   })();
   pushTimer = setTimeout(flushPush, delay);
 }
