@@ -95,6 +95,7 @@ export default function AdminDashboard() {
   const [screenshotKey, setScreenshotKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [villageLimits, setVillageLimits] = useState<Record<string, { min: number; max: number }>>({});
+  const [tokenVerified, setTokenVerified] = useState(false);
   // Confirm dialogs
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
@@ -125,15 +126,18 @@ export default function AdminDashboard() {
     try { return sessionStorage.getItem("siskeudes_admin_token"); } catch { return null; }
   })();
 
+  // Only subscribe to admin queries after token is verified to prevent white screen crash
+  const safeAdminToken = tokenVerified ? adminToken : null;
+
   const realtimeActiveSessions = useQuery(
     anyApi.sessions.listActive,
-    adminToken ? { adminToken, minutesThreshold: 2 } : "skip",
+    safeAdminToken ? { adminToken: safeAdminToken, minutesThreshold: 2 } : "skip",
   ) as SessionRow[] | undefined;
 
   // Realtime subscription for reports
   const realtimeReports = useQuery(
     anyApi.reportSubmissions.listAll,
-    adminToken ? { adminToken } : "skip",
+    safeAdminToken ? { adminToken: safeAdminToken } : "skip",
   ) as ReportRow[] | undefined;
 
   // Realtime subscription for village group limits
@@ -147,7 +151,7 @@ export default function AdminDashboard() {
   // Realtime admin summary (counts) — lightweight alternative to full session list
   const realtimeSummary = useQuery(
     anyApi.adminSummary.getCounts,
-    adminToken ? { adminToken } : "skip",
+    safeAdminToken ? { adminToken: safeAdminToken } : "skip",
   ) as {
     activeCount: number;
     totalCount: number;
@@ -232,9 +236,19 @@ export default function AdminDashboard() {
             try { sessionStorage.removeItem("siskeudes_admin_token"); } catch {}
             try { sessionStorage.removeItem("siskeudes_admin"); } catch {}
             navigate("/admin");
+            return;
           }
-        } catch {}
+          setTokenVerified(true);
+        } catch (err) {
+          console.error('[admin] token validation failed:', err);
+          try { sessionStorage.removeItem("siskeudes_admin_token"); } catch {}
+          try { sessionStorage.removeItem("siskeudes_admin"); } catch {}
+          navigate("/admin");
+          return;
+        }
       })();
+    } else {
+      setTokenVerified(true);
     }
     refresh();
     // Polling only for full session list (listAll) which requires pagination
@@ -515,6 +529,15 @@ export default function AdminDashboard() {
   const isOnline = (lastActive: string) => {
     return Date.now() - new Date(lastActive).getTime() < 5 * 60 * 1000;
   };
+
+  // Show loading while token is being verified to prevent white screen
+  if (!tokenVerified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(152,40%,8%)] to-[hsl(210,25%,12%)]">
+        <p className="text-white/60 text-sm animate-pulse">Memverifikasi admin...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[hsl(152,40%,8%)] to-[hsl(210,25%,12%)]">
