@@ -104,6 +104,20 @@ export function useGroupRealtimeSync() {
   useEffect(() => {
     if (!groupId) return;
     if (!initialPullDone.current) return;
+
+    // Handle document deletion (admin wipe): doc becomes null after being non-null
+    if (doc === null && prevUpdatedAt.current !== null) {
+      prevUpdatedAt.current = null;
+      // Clear local state — admin wiped the group data
+      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 3000));
+      localStorage.removeItem("siskeudes_state");
+      localStorage.removeItem("siskeudes_app_state");
+      localStorage.removeItem("siskeudes_mutasi_kas");
+      window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
+      toast.info("Data kelompok direset oleh admin.", { duration: 2000 });
+      return;
+    }
+
     if (!doc || !doc.state || typeof doc.state !== "object") return;
     
     // Skip if this is our own write
@@ -129,7 +143,7 @@ export function useGroupRealtimeSync() {
     const applied = applyIncomingState(doc.state as Record<string, unknown>);
     if (applied) toast.info("Data kelompok diperbarui", { duration: 800 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, doc?.updatedAt, doc?.lastSessionId, sessionId]);
+  }, [groupId, doc, sessionId]);
 
   // Handle manual pull requests
   useEffect(() => {
