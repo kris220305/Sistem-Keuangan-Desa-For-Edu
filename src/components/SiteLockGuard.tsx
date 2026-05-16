@@ -78,7 +78,7 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
     if (wipeVer > 0 && wipeVer !== appliedWipe) {
       localStorage.setItem("siskeudes_wipe_all_applied_v", String(wipeVer));
       // Pause sync to prevent pushing empty state back to server
-      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
+      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 2000));
       // Clear local cache directly (don't use saveState which triggers sync)
       localStorage.removeItem("siskeudes_state");
       localStorage.removeItem("siskeudes_app_state");
@@ -93,7 +93,7 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
     if (demoVer > 0 && demoVer !== appliedDemo) {
       localStorage.setItem("siskeudes_demo_seed_applied_v", String(demoVer));
       // Pause sync to prevent pushing demo state back to server
-      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
+      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 2000));
       import("@/data/demo-seed-data").then(({ getDemoSeedData }) => {
         const demo = getDemoSeedData();
         // Write directly to localStorage cache (don't use saveState which triggers sync)
@@ -208,7 +208,7 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
           }
           localStorage.setItem("siskeudes_wipe_all_applied_v", String(wipeVer));
           // Pause sync + clear cache directly (don't trigger saveState sync)
-          localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
+          localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 2000));
           localStorage.removeItem("siskeudes_state");
           localStorage.removeItem("siskeudes_app_state");
           localStorage.removeItem("siskeudes_mutasi_kas");
@@ -225,7 +225,7 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
           }
           localStorage.setItem("siskeudes_demo_seed_applied_v", String(demoVer));
           // Pause sync + write cache directly (don't trigger saveState sync)
-          localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
+          localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 2000));
           import("@/data/demo-seed-data").then(({ getDemoSeedData: getDemo }) => {
             const demo = getDemo();
             const json = JSON.stringify(demo);

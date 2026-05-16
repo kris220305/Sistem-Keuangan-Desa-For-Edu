@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { getSessionId } from "@/lib/session-manager";
 import { toast } from "sonner";
 import { loadState, mergeStates, type AppState } from "@/data/app-state";
 import { useQuery } from "convex/react";
@@ -9,23 +8,11 @@ import { useGroupContext } from "@/hooks/use-group-context";
 /**
  * Subscribes to realtime updates of groupStates via Convex useQuery subscription.
  * 
- * Key improvements:
- *  - Uses GroupContext instead of reading localStorage directly (no stale groupId)
- *  - Listens to "siskeudes:group-changed" event via context
- *  - Applies incoming state via merge, dispatches "siskeudes:state-updated"
- *  - Conflict detection: if teammate writes within 2s of local write, delays apply
- *  - No polling — pure reactive subscription
+ * - Uses GroupContext (no stale groupId)
+ * - Applies incoming state immediately via CRDT merge
+ * - Detects document deletion (admin wipe) and clears local state
+ * - No polling, no delay — pure reactive subscription
  */
-
-const LAST_LOCAL_WRITE_KEY = "siskeudes_last_local_write_at";
-
-function getLastLocalWriteAt(): number {
-  try {
-    return Math.max(0, Math.floor(Number(localStorage.getItem(LAST_LOCAL_WRITE_KEY) || "0") || 0));
-  } catch {
-    return 0;
-  }
-}
 
 function applyIncomingState(formData: Record<string, unknown>): boolean {
   try {
@@ -48,9 +35,8 @@ function applyIncomingState(formData: Record<string, unknown>): boolean {
       return false;
     }
 
-    // Pause outgoing sync briefly to prevent echo loop:
-    // incoming server state → localStorage write → saveState debounce → re-push to server
-    localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 3000));
+    // Pause outgoing sync briefly to prevent echo loop
+    localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 1500));
 
     localStorage.setItem("siskeudes_state", mergedStr);
     localStorage.setItem("siskeudes_app_state", mergedStr);
@@ -109,7 +95,7 @@ export function useGroupRealtimeSync() {
     if (doc === null && prevUpdatedAt.current !== null) {
       prevUpdatedAt.current = null;
       // Clear local state — admin wiped the group data
-      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 3000));
+      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 2000));
       localStorage.removeItem("siskeudes_state");
       localStorage.removeItem("siskeudes_app_state");
       localStorage.removeItem("siskeudes_mutasi_kas");
@@ -127,21 +113,8 @@ export function useGroupRealtimeSync() {
     if (doc.updatedAt === prevUpdatedAt.current) return;
     prevUpdatedAt.current = doc.updatedAt ?? null;
 
-    const lastWriteAt = getLastLocalWriteAt();
-    const msSinceWrite = Date.now() - lastWriteAt;
-    
-    if (lastWriteAt > 0 && msSinceWrite >= 0 && msSinceWrite < 2500) {
-      // Conflict: user just wrote locally, delay applying remote update
-      toast.warning("Ada update dari anggota lain saat Anda baru mengisi. Update diterapkan sebentar lagi.", { duration: 2200 });
-      const t = setTimeout(() => {
-        const applied = applyIncomingState(doc.state as Record<string, unknown>);
-        if (applied) toast.info("Data kelompok diperbarui", { duration: 800 });
-      }, 2600);
-      return () => clearTimeout(t);
-    }
-    
-    const applied = applyIncomingState(doc.state as Record<string, unknown>);
-    if (applied) toast.info("Data kelompok diperbarui", { duration: 800 });
+    // Apply immediately — no delay. The CRDT merge handles conflicts safely.
+    applyIncomingState(doc.state as Record<string, unknown>);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId, doc, sessionId]);
 

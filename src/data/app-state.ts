@@ -549,8 +549,9 @@ export function saveState(state: AppState) {
 
   pendingState = stamped;
   if (pushTimer) clearTimeout(pushTimer);
+  // Fast debounce: 800ms for group (realtime to others), 600ms for individual
   const delay = (() => {
-    try { return localStorage.getItem('siskeudes_work_mode') === 'group' ? 2000 : 1000; } catch { return 1000; }
+    try { return localStorage.getItem('siskeudes_work_mode') === 'group' ? 800 : 600; } catch { return 600; }
   })();
   pushTimer = setTimeout(flushPush, delay);
 }

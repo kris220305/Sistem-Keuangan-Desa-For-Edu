@@ -253,9 +253,8 @@ export default function AdminDashboard() {
       setTokenVerified(true);
     }
     refresh();
-    // Polling only for full session list (listAll) which requires pagination
-    // Other data (settings, active sessions, reports, limits) are now realtime via useQuery
-    const interval = setInterval(refresh, 30000);
+    // Polling for full session list — other data is realtime via useQuery
+    const interval = setInterval(refresh, 15000);
     const onFocus = () => refresh();
     const onVis = () => {
       if (document.visibilityState === "visible") refresh();

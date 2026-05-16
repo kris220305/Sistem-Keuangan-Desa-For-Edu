@@ -43,8 +43,8 @@ export function SyncStatusProvider({ children }: { children: ReactNode }) {
     setSyncState("synced");
     setLastError(null);
     setLastSyncAt(Date.now());
-    // Auto-reset to idle after 3s
-    resetTimer.current = setTimeout(() => setSyncState("idle"), 3000);
+    // Auto-reset to idle after 1.5s
+    resetTimer.current = setTimeout(() => setSyncState("idle"), 1500);
   }, []);
 
   const markFailed = useCallback((error: string) => {
