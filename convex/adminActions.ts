@@ -9,6 +9,14 @@ import { AnggaranSchema } from "./validators/AnggaranSchema";
  * Replaces the old approach of only bumping demo_seed_version / wipe_all_version.
  */
 
+const DEFAULT_BATCH_SIZE = 25;
+const MAX_BATCH_SIZE = 50;
+
+function normalizeBatchSize(batchSize: number | undefined) {
+  if (!Number.isFinite(batchSize ?? DEFAULT_BATCH_SIZE)) return DEFAULT_BATCH_SIZE;
+  return Math.max(1, Math.min(MAX_BATCH_SIZE, Math.floor(batchSize ?? DEFAULT_BATCH_SIZE)));
+}
+
 async function deleteGroupData(db: any, groupId: any) {
   const state = await db
     .query("groupStates")
@@ -82,44 +90,99 @@ async function bumpWipeVersion(db: any) {
   return now;
 }
 
-async function clearAllGroupStates(db: any) {
+async function bumpDemoVersion(db: any) {
+  const now = Date.now();
+  const settings = await db
+    .query("siteSettings")
+    .withIndex("by_key", (q: any) => q.eq("key", "singleton"))
+    .unique();
+  if (settings) await db.patch(settings._id, { demoSeedVersion: now, updatedAt: now });
+  return now;
+}
+
+async function clearGroupStatesBatch(db: any, batchSize: number) {
   let groupStatesDeleted = 0;
   let chunksDeleted = 0;
 
-  for (let i = 0; i < 10; i++) {
-    const batch = await db.query("groupStates").take(200);
-    if (!batch.length) break;
-    for (const gs of batch) {
-      await db.delete(gs._id);
-      groupStatesDeleted++;
-    }
-    if (batch.length < 200) break;
+  const states = await db.query("groupStates").take(batchSize);
+  for (const gs of states) {
+    await db.delete(gs._id);
+    groupStatesDeleted++;
   }
 
-  for (let i = 0; i < 10; i++) {
-    const chunks = await db.query("groupStateChunks").take(200);
-    if (!chunks.length) break;
-    for (const c of chunks) {
-      await db.delete(c._id);
-      chunksDeleted++;
-    }
-    if (chunks.length < 200) break;
+  const chunks = await db.query("groupStateChunks").take(batchSize);
+  for (const c of chunks) {
+    await db.delete(c._id);
+    chunksDeleted++;
   }
 
-  return { groupStatesDeleted, chunksDeleted };
+  return {
+    groupStatesDeleted,
+    chunksDeleted,
+    hasMoreGroupStates: states.length === batchSize,
+    hasMoreChunks: chunks.length === batchSize,
+  };
+}
+
+async function deleteReportsBatch(db: any, storage: any, batchSize: number) {
+  const reports = await db.query("reportSubmissions").take(batchSize);
+  let reportsDeleted = 0;
+  for (const r of reports) {
+    if (r.pdfStorageId) {
+      try { await storage.delete(r.pdfStorageId); } catch {}
+    }
+    await db.delete(r._id);
+    reportsDeleted++;
+  }
+  return { reportsDeleted, hasMoreReports: reports.length === batchSize };
+}
+
+async function deleteAllUsersBatch(db: any, batchSize: number) {
+  const members = await db.query("groupMembers").take(batchSize);
+  let membersDeleted = 0;
+  for (const m of members) {
+    await db.delete(m._id);
+    membersDeleted++;
+  }
+
+  const groups = await db.query("groups").take(batchSize);
+  let groupsDeleted = 0;
+  for (const g of groups) {
+    await db.delete(g._id);
+    groupsDeleted++;
+  }
+
+  const sessions = await db.query("userSessions").take(batchSize);
+  let sessionsDeleted = 0;
+  for (const s of sessions) {
+    await db.delete(s._id);
+    sessionsDeleted++;
+  }
+
+  return {
+    membersDeleted,
+    groupsDeleted,
+    sessionsDeleted,
+    hasMoreMembers: members.length === batchSize,
+    hasMoreGroups: groups.length === batchSize,
+    hasMoreSessions: sessions.length === batchSize,
+  };
 }
 
 export const seedDemoData = mutationGeneric({
   args: {
     adminToken: v.string(),
     demoState: AnggaranSchema,
+    batchSize: v.optional(v.number()),
   },
-  handler: async ({ db }, { adminToken, demoState }) => {
+  handler: async ({ db }, { adminToken, demoState, batchSize }) => {
     const admin = await assertAdmin(db, adminToken);
     const now = Date.now();
+    const limit = normalizeBatchSize(batchSize);
 
-    // Write demo data to ALL existing groupStates
-    const groups = await db.query("groups").take(200);
+    // Write demo data to a small batch of groups. Clients also react to
+    // demoSeedVersion, so this does not need one giant transaction.
+    const groups = await db.query("groups").take(limit);
     let groupsUpdated = 0;
     for (const g of groups) {
       const existing = await db
@@ -140,30 +203,8 @@ export const seedDemoData = mutationGeneric({
       groupsUpdated++;
     }
 
-    // Also write to all userSessions formData (for individual mode users)
-    let sessionsUpdated = 0;
-    for (let i = 0; i < 10; i++) {
-      const batch = await db.query("userSessions").withIndex("by_lastActive").order("desc").take(200);
-      if (!batch.length) break;
-      for (const s of batch) {
-        if (!s.formData || JSON.stringify(s.formData) !== JSON.stringify(demoState)) {
-          await db.patch(s._id, { formData: demoState });
-          sessionsUpdated++;
-        }
-      }
-      if (batch.length < 200) break;
-      // Only process first batch for safety
-      break;
-    }
-
-    // Bump siteSettings demo_seed_version so SiteLockGuard triggers client-side reload
-    const settings = await db
-      .query("siteSettings")
-      .withIndex("by_key", (q: any) => q.eq("key", "singleton"))
-      .unique();
-    if (settings) {
-      await db.patch(settings._id, { demoSeedVersion: now, updatedAt: now });
-    }
+    const done = true;
+    await bumpDemoVersion(db);
 
     try {
       await writeAuditLog(db, {
@@ -173,47 +214,25 @@ export const seedDemoData = mutationGeneric({
         targetId: "*",
         fieldName: "demoSeed",
         oldValue: null,
-        newValue: { groupsUpdated, sessionsUpdated },
+        newValue: { groupsUpdated, done },
       });
     } catch { /* ignore audit failure */ }
 
-    return { ok: true, groupsUpdated, sessionsUpdated };
+    return { ok: true, done, groupsUpdated, sessionsUpdated: 0 };
   },
 });
 
 export const wipeAllData = mutationGeneric({
-  args: { adminToken: v.string() },
-  handler: async ({ db }, { adminToken }) => {
+  args: { adminToken: v.string(), batchSize: v.optional(v.number()) },
+  handler: async ({ db, storage }, { adminToken, batchSize }) => {
     const admin = await assertAdmin(db, adminToken);
+    const limit = normalizeBatchSize(batchSize);
 
-    const { groupStatesDeleted } = await clearAllGroupStates(db);
+    const cleared = await clearGroupStatesBatch(db, limit);
+    const reports = await deleteReportsBatch(db, storage, limit);
+    const done = !cleared.hasMoreGroupStates && !cleared.hasMoreChunks && !reports.hasMoreReports;
 
-    // Clear all userSessions formData and formProgress
-    let sessionsCleared = 0;
-    for (let i = 0; i < 10; i++) {
-      const batch = await db.query("userSessions").take(200);
-      if (!batch.length) break;
-      const needsPatch = batch.filter((s) => s.formData || (s.formProgress && Object.keys(s.formProgress as object).length > 0));
-      for (const s of needsPatch) {
-        await db.patch(s._id, { formData: null, formProgress: {} });
-        sessionsCleared++;
-      }
-      if (batch.length < 200) break;
-    }
-
-    // Clear all reportSubmissions
-    let reportsDeleted = 0;
-    for (let i = 0; i < 10; i++) {
-      const batch = await db.query("reportSubmissions").take(200);
-      if (!batch.length) break;
-      for (const r of batch) {
-        await db.delete(r._id);
-        reportsDeleted++;
-      }
-    }
-
-    // Bump siteSettings wipe_all_version so SiteLockGuard triggers client-side wipe
-    await bumpWipeVersion(db);
+    if (done) await bumpWipeVersion(db);
 
     try {
       await writeAuditLog(db, {
@@ -222,12 +241,24 @@ export const wipeAllData = mutationGeneric({
         targetType: "global",
         targetId: "*",
         fieldName: "wipe",
-        oldValue: { groupStatesDeleted, sessionsCleared, reportsDeleted },
+        oldValue: {
+          groupStatesDeleted: cleared.groupStatesDeleted,
+          chunksDeleted: cleared.chunksDeleted,
+          reportsDeleted: reports.reportsDeleted,
+          done,
+        },
         newValue: null,
       });
     } catch { /* ignore audit failure */ }
 
-    return { ok: true, groupStatesDeleted, sessionsCleared, reportsDeleted };
+    return {
+      ok: true,
+      done,
+      groupStatesDeleted: cleared.groupStatesDeleted,
+      chunksDeleted: cleared.chunksDeleted,
+      sessionsCleared: 0,
+      reportsDeleted: reports.reportsDeleted,
+    };
   },
 });
 
@@ -259,45 +290,20 @@ export const kickUser = mutationGeneric({
 });
 
 export const kickAllUsers = mutationGeneric({
-  args: { adminToken: v.string() },
-  handler: async ({ db }, { adminToken }) => {
+  args: { adminToken: v.string(), batchSize: v.optional(v.number()) },
+  handler: async ({ db }, { adminToken, batchSize }) => {
     const admin = await assertAdmin(db, adminToken);
-    let sessionsDeleted = 0;
-    let groupsDeleted = 0;
-    let membersDeleted = 0;
+    const limit = normalizeBatchSize(batchSize);
+    const cleared = await clearGroupStatesBatch(db, limit);
+    const deleted = await deleteAllUsersBatch(db, limit);
+    const done =
+      !cleared.hasMoreGroupStates &&
+      !cleared.hasMoreChunks &&
+      !deleted.hasMoreMembers &&
+      !deleted.hasMoreGroups &&
+      !deleted.hasMoreSessions;
 
-    for (let i = 0; i < 10; i++) {
-      const members = await db.query("groupMembers").take(200);
-      if (!members.length) break;
-      for (const m of members) {
-        await db.delete(m._id);
-        membersDeleted++;
-      }
-      if (members.length < 200) break;
-    }
-
-    for (let i = 0; i < 10; i++) {
-      const groups = await db.query("groups").take(200);
-      if (!groups.length) break;
-      for (const g of groups) {
-        await deleteGroupData(db, g._id);
-        await db.delete(g._id);
-        groupsDeleted++;
-      }
-      if (groups.length < 200) break;
-    }
-
-    for (let i = 0; i < 10; i++) {
-      const sessions = await db.query("userSessions").take(200);
-      if (!sessions.length) break;
-      for (const s of sessions) {
-        await db.delete(s._id);
-        sessionsDeleted++;
-      }
-      if (sessions.length < 200) break;
-    }
-
-    await bumpWipeVersion(db);
+    if (done) await bumpWipeVersion(db);
     try {
       await writeAuditLog(db, {
         actorId: `admin:${(admin as any).tokenHash}`,
@@ -305,11 +311,26 @@ export const kickAllUsers = mutationGeneric({
         targetType: "userSessions",
         targetId: "*",
         fieldName: "deleted",
-        oldValue: { sessionsDeleted, groupsDeleted, membersDeleted },
+        oldValue: {
+          sessionsDeleted: deleted.sessionsDeleted,
+          groupsDeleted: deleted.groupsDeleted,
+          membersDeleted: deleted.membersDeleted,
+          groupStatesDeleted: cleared.groupStatesDeleted,
+          chunksDeleted: cleared.chunksDeleted,
+          done,
+        },
         newValue: null,
       });
     } catch {}
-    return { ok: true, sessionsDeleted, groupsDeleted, membersDeleted };
+    return {
+      ok: true,
+      done,
+      sessionsDeleted: deleted.sessionsDeleted,
+      groupsDeleted: deleted.groupsDeleted,
+      membersDeleted: deleted.membersDeleted,
+      groupStatesDeleted: cleared.groupStatesDeleted,
+      chunksDeleted: cleared.chunksDeleted,
+    };
   },
 });
 
@@ -347,23 +368,14 @@ export const resetUserProgress = mutationGeneric({
 });
 
 export const resetAllProgress = mutationGeneric({
-  args: { adminToken: v.string() },
-  handler: async ({ db }, { adminToken }) => {
+  args: { adminToken: v.string(), batchSize: v.optional(v.number()) },
+  handler: async ({ db }, { adminToken, batchSize }) => {
     const admin = await assertAdmin(db, adminToken);
-    const { groupStatesDeleted, chunksDeleted } = await clearAllGroupStates(db);
-    let sessionsCleared = 0;
+    const limit = normalizeBatchSize(batchSize);
+    const cleared = await clearGroupStatesBatch(db, limit);
+    const done = !cleared.hasMoreGroupStates && !cleared.hasMoreChunks;
 
-    for (let i = 0; i < 10; i++) {
-      const batch = await db.query("userSessions").take(200);
-      if (!batch.length) break;
-      for (const s of batch) {
-        await db.patch(s._id, { formProgress: {}, formData: null });
-        sessionsCleared++;
-      }
-      if (batch.length < 200) break;
-    }
-
-    await bumpWipeVersion(db);
+    if (done) await bumpWipeVersion(db);
     try {
       await writeAuditLog(db, {
         actorId: `admin:${(admin as any).tokenHash}`,
@@ -371,10 +383,21 @@ export const resetAllProgress = mutationGeneric({
         targetType: "userSessions",
         targetId: "*",
         fieldName: "formProgress",
-        oldValue: { sessionsCleared, groupStatesDeleted, chunksDeleted },
+        oldValue: {
+          sessionsCleared: 0,
+          groupStatesDeleted: cleared.groupStatesDeleted,
+          chunksDeleted: cleared.chunksDeleted,
+          done,
+        },
         newValue: {},
       });
     } catch {}
-    return { ok: true, sessionsCleared, groupStatesDeleted, chunksDeleted };
+    return {
+      ok: true,
+      done,
+      sessionsCleared: 0,
+      groupStatesDeleted: cleared.groupStatesDeleted,
+      chunksDeleted: cleared.chunksDeleted,
+    };
   },
 });

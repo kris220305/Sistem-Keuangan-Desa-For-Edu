@@ -6,6 +6,8 @@ const SESSION_KEY = "siskeudes_session_id";
 const HAS_CONVEX_SESSION_KEY = "siskeudes_has_convex_session";
 const DEFAULT_MAX_GROUP_MEMBERS = 20;
 const DEFAULT_MIN_GROUP_MEMBERS = 1;
+const ADMIN_BULK_BATCH_SIZE = 25;
+const ADMIN_BULK_MAX_ROUNDS = 200;
 
 function getConvex() {
   if (!convex) throw new Error("Convex belum dikonfigurasi.");
@@ -211,6 +213,42 @@ export async function deleteSession(sessionId: string) {
   await getConvex().mutation(anyApi.adminActions.kickUser, { adminToken, sessionId } as any);
 }
 
+type BulkResult = {
+  done?: boolean;
+  [key: string]: unknown;
+};
+
+function addNumberTotals(total: Record<string, number>, partial: BulkResult) {
+  for (const [key, value] of Object.entries(partial)) {
+    if (key === "done" || key === "ok") continue;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      total[key] = (total[key] || 0) + value;
+    }
+  }
+}
+
+async function runAdminBulkMutation(
+  mutationRef: any,
+  args: Record<string, unknown> = {},
+): Promise<Record<string, number>> {
+  const adminToken = getAdminToken();
+  if (!adminToken) throw new Error("Admin token tidak tersedia");
+  const total: Record<string, number> = {};
+
+  for (let round = 0; round < ADMIN_BULK_MAX_ROUNDS; round++) {
+    const res = await getConvex().mutation(mutationRef, {
+      ...args,
+      adminToken,
+      batchSize: ADMIN_BULK_BATCH_SIZE,
+    } as any) as BulkResult;
+    addNumberTotals(total, res || {});
+    if (res?.done !== false) return total;
+    await new Promise((resolve) => setTimeout(resolve, 80));
+  }
+
+  throw new Error("Aksi admin terlalu besar dan dihentikan sementara. Jalankan lagi untuk melanjutkan.");
+}
+
 export async function getActiveSessions(minutesThreshold = 5) {
   if (isConvexEnabled && convex) {
     try {
@@ -228,9 +266,7 @@ export async function getActiveSessions(minutesThreshold = 5) {
 
 export async function deleteAllSessions() {
   if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
-  const adminToken = getAdminToken();
-  if (!adminToken) throw new Error("Admin token tidak tersedia");
-  await getConvex().mutation(anyApi.adminActions.kickAllUsers, { adminToken } as any);
+  await runAdminBulkMutation(anyApi.adminActions.kickAllUsers);
 }
 
 export async function resetUserProgress(sessionId: string) {
@@ -242,9 +278,17 @@ export async function resetUserProgress(sessionId: string) {
 
 export async function resetAllProgress() {
   if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
-  const adminToken = getAdminToken();
-  if (!adminToken) throw new Error("Admin token tidak tersedia");
-  await getConvex().mutation(anyApi.adminActions.resetAllProgress, { adminToken } as any);
+  return await runAdminBulkMutation(anyApi.adminActions.resetAllProgress);
+}
+
+export async function seedDemoDataForAll(demoState: Record<string, unknown>) {
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  return await runAdminBulkMutation(anyApi.adminActions.seedDemoData, { demoState });
+}
+
+export async function wipeAllDataForAll() {
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  return await runAdminBulkMutation(anyApi.adminActions.wipeAllData);
 }
 
 export async function deleteReport(id: string) {
@@ -258,7 +302,14 @@ export async function deleteAllReports() {
   if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
   const adminToken = getAdminToken();
   if (!adminToken) throw new Error("Admin token tidak tersedia");
-  await getConvex().mutation(anyApi.reportSubmissions.removeAll, { adminToken } as any);
+  const total: Record<string, number> = {};
+  for (let round = 0; round < ADMIN_BULK_MAX_ROUNDS; round++) {
+    const res = await getConvex().mutation(anyApi.reportSubmissions.removeAll, { adminToken } as any) as BulkResult;
+    addNumberTotals(total, res || {});
+    if (res?.done !== false) return total;
+    await new Promise((resolve) => setTimeout(resolve, 80));
+  }
+  throw new Error("Terlalu banyak laporan untuk dihapus dalam satu proses. Jalankan lagi untuk melanjutkan.");
 }
 
 export async function deleteReportPdf(id: string) {
@@ -268,11 +319,22 @@ export async function deleteReportPdf(id: string) {
   await getConvex().mutation(anyApi.reportSubmissions.deletePdf, { adminToken, id: id as never } as any);
 }
 
-export async function deleteAllReportPdfs() {
+export async function deleteAllReportPdfs(reportIds?: string[]) {
   if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
   const adminToken = getAdminToken();
   if (!adminToken) throw new Error("Admin token tidak tersedia");
-  await getConvex().mutation(anyApi.reportSubmissions.deleteAllPdfs, { adminToken } as any);
+  const ids = [...(reportIds || [])];
+  let deleted = 0;
+  while (ids.length) {
+    const chunk = ids.splice(0, 50);
+    const res = await getConvex().mutation(anyApi.reportSubmissions.deleteAllPdfs, {
+      adminToken,
+      ids: chunk as never[],
+    } as any) as { deleted?: number };
+    deleted += Math.floor(Number(res?.deleted || 0) || 0);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+  }
+  return { deleted };
 }
 
 export async function trackFormProgress(formKey: string) {

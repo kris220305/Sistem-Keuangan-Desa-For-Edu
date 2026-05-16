@@ -4,6 +4,25 @@ import { assertAdmin } from "./_shared/adminAuth";
 import { writeAuditLog } from "./_shared/audit";
 
 const CONVEX_DOCUMENT_SAFE_BYTES = 850 * 1024;
+const BULK_BATCH_SIZE = 50;
+
+const REPORT_PROGRESS_KEYS = [
+  "data_umum",
+  "pendapatan",
+  "belanja",
+  "pembiayaan",
+  "penerimaan",
+  "penganggaran",
+  "spp_definitif",
+  "spp_panjar",
+  "spp_pembiayaan",
+  "pencairan",
+  "spj",
+  "pajak",
+  "saldo_awal",
+  "jurnal",
+  "mutasi",
+] as const;
 
 function getJsonByteSize(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value)).length;
@@ -14,6 +33,34 @@ function ensureReportWithinLimit(reportData: unknown) {
   if (bytes > CONVEX_DOCUMENT_SAFE_BYTES) {
     throw new Error(`Data laporan terlalu besar untuk disimpan (${Math.ceil(bytes / 1024)} KB).`);
   }
+}
+
+function hasItems(value: unknown) {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function summarizeReportProgress(reportData: unknown) {
+  const data = typeof reportData === "object" && reportData !== null
+    ? (reportData as Record<string, unknown>)
+    : {};
+  const progress: Record<string, boolean> = {};
+  for (const key of REPORT_PROGRESS_KEYS) progress[key] = Boolean(data[key]);
+  progress.pendapatan = hasItems(data.pendapatan);
+  progress.belanja = hasItems(data.belanja);
+  progress.pembiayaan = hasItems(data.pembiayaan);
+  progress.penerimaan = hasItems(data.penerimaan) || hasItems(data.silpa);
+  progress.penganggaran = hasItems(data.kegiatanAnggaran);
+  progress.spp_definitif = hasItems(data.spp);
+  progress.spp_panjar = hasItems(data.spjPanjar) || hasItems(data.sisaPanjar);
+  progress.spp_pembiayaan = hasItems(data.spp);
+  progress.pencairan = hasItems(data.pencairan);
+  progress.spj = hasItems(data.spjPanjar);
+  progress.pajak = hasItems(data.penyetoranPajak);
+  progress.saldo_awal = hasItems(data.saldoAwal);
+  progress.jurnal = hasItems(data.jurnalUmum);
+  progress.mutasi = hasItems(data.mutasiKas);
+  progress.data_umum = Boolean(data.desaProfile || data.villageProfile || data.namaDesa);
+  return progress;
 }
 
 async function assertIsLeader(db: any, groupId: any, sessionId: string) {
@@ -76,7 +123,7 @@ export const listAll = queryGeneric({
         submitted_by: r.submittedBy,
         village_id: r.villageId,
         village_name: r.villageName,
-        report_data: r.reportData,
+        report_data: summarizeReportProgress(r.reportData),
         pdf_url: pdfUrl,
         pdf_file_name: r.pdfFileName || null,
         created_at: new Date(r.createdAt).toISOString(),
@@ -116,17 +163,15 @@ export const removeAll = mutationGeneric({
   handler: async ({ db, storage }, { adminToken }) => {
     const admin = await assertAdmin(db, adminToken);
     let count = 0;
-    for (let i = 0; i < 10; i++) {
-      const batch = await db.query("reportSubmissions").take(200);
-      if (!batch.length) break;
-      for (const r of batch) {
-        if (r.pdfStorageId) {
-          try { await storage.delete(r.pdfStorageId); } catch {}
-        }
-        await db.delete(r._id);
-        count++;
+    const batch = await db.query("reportSubmissions").take(BULK_BATCH_SIZE);
+    for (const r of batch) {
+      if (r.pdfStorageId) {
+        try { await storage.delete(r.pdfStorageId); } catch {}
       }
+      await db.delete(r._id);
+      count++;
     }
+    const done = batch.length < BULK_BATCH_SIZE;
     try {
       await writeAuditLog(db, {
         actorId: `admin:${(admin as any).tokenHash}`,
@@ -134,11 +179,11 @@ export const removeAll = mutationGeneric({
         targetType: "reportSubmissions",
         targetId: "*",
         fieldName: "deleted",
-        oldValue: { count },
+        oldValue: { count, done },
         newValue: null,
       });
     } catch {}
-    return true;
+    return { ok: true, done, deleted: count };
   },
 });
 
@@ -168,22 +213,17 @@ export const deletePdf = mutationGeneric({
 });
 
 export const deleteAllPdfs = mutationGeneric({
-  args: { adminToken: v.string() },
-  handler: async ({ db, storage }, { adminToken }) => {
+  args: { adminToken: v.string(), ids: v.optional(v.array(v.id("reportSubmissions"))) },
+  handler: async ({ db, storage }, { adminToken, ids }) => {
     const admin = await assertAdmin(db, adminToken);
     let deleted = 0;
-    for (let i = 0; i < 10; i++) {
-      // Only fetch rows that have a pdfStorageId
-      const batch = await db.query("reportSubmissions").take(200);
-      if (!batch.length) break;
-      const withPdf = batch.filter((r) => !!r.pdfStorageId);
-      if (!withPdf.length) break;
-      for (const r of withPdf) {
+    for (const id of (ids || []).slice(0, BULK_BATCH_SIZE)) {
+      const r = await db.get(id);
+      if (r?.pdfStorageId) {
         try { await storage.delete(r.pdfStorageId!); } catch {}
-        await db.patch(r._id, { pdfStorageId: undefined, pdfFileName: undefined });
+        await db.patch(id, { pdfStorageId: undefined, pdfFileName: undefined });
         deleted++;
       }
-      if (batch.length < 200) break;
     }
     try {
       await writeAuditLog(db, {
@@ -196,7 +236,7 @@ export const deleteAllPdfs = mutationGeneric({
         newValue: null,
       });
     } catch {}
-    return true;
+    return { ok: true, deleted };
   },
 });
 

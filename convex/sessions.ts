@@ -28,6 +28,28 @@ function cleanupCutoffMs(now: number) {
   return now - 7 * 24 * 60 * 60 * 1000;
 }
 
+async function getGlobalResetVersion(db: any) {
+  const settings = await db
+    .query("siteSettings")
+    .withIndex("by_key", (q: any) => q.eq("key", "singleton"))
+    .unique();
+  return Math.max(0, Math.floor(Number(settings?.wipeAllVersion || 0) || 0));
+}
+
+function isResetByGlobalVersion(session: any, wipeVersion: number) {
+  return wipeVersion > 0 && Math.floor(Number(session?.lastActive || 0) || 0) < wipeVersion;
+}
+
+function visibleFormProgress(session: any, wipeVersion: number) {
+  if (isResetByGlobalVersion(session, wipeVersion)) return {};
+  return (session.formProgress || {}) as Record<string, boolean>;
+}
+
+function visibleFormData(session: any, wipeVersion: number) {
+  if (isResetByGlobalVersion(session, wipeVersion)) return null;
+  return (session.formData || null) as any;
+}
+
 export const upsert = mutationGeneric({
   args: {
     sessionId: v.string(),
@@ -42,6 +64,7 @@ export const upsert = mutationGeneric({
   handler: async ({ db }, args) => {
     ensureFormDataWithinLimit(args.formData);
     const now = Date.now();
+    const wipeVersion = await getGlobalResetVersion(db);
     const existing = await db
       .query("userSessions")
       .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
@@ -59,8 +82,10 @@ export const upsert = mutationGeneric({
       formProgress: {},
     };
 
+    const resetExisting = existing && isResetByGlobalVersion(existing, wipeVersion);
+
     const mergedProgress = (() => {
-      const a = (base as { formProgress?: unknown }).formProgress;
+      const a = resetExisting ? {} : (base as { formProgress?: unknown }).formProgress;
       const b = args.formProgress;
       const aObj = typeof a === "object" && a !== null ? (a as Record<string, unknown>) : {};
       const bObj = typeof b === "object" && b !== null ? (b as Record<string, unknown>) : {};
@@ -78,7 +103,7 @@ export const upsert = mutationGeneric({
       lastActive: now,
       createdAt: (base as any).createdAt ?? now,
       formProgress: mergedProgress,
-      formData: args.formData !== undefined ? args.formData : ((base as any).formData as any),
+      formData: args.formData !== undefined ? args.formData : (resetExisting ? null : ((base as any).formData as any)),
     };
 
     if (existing) {
@@ -92,6 +117,7 @@ export const upsert = mutationGeneric({
 export const getBySessionId = queryGeneric({
   args: { sessionId: v.string() },
   handler: async ({ db, storage }, { sessionId }) => {
+    const wipeVersion = await getGlobalResetVersion(db);
     const s = await db
       .query("userSessions")
       .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
@@ -106,8 +132,8 @@ export const getBySessionId = queryGeneric({
       village_name: s.villageName,
       last_active: new Date(s.lastActive).toISOString(),
       created_at: new Date(s.createdAt).toISOString(),
-      form_progress: (s.formProgress || {}) as Record<string, boolean>,
-      form_data: (s.formData || null) as any,
+      form_progress: visibleFormProgress(s, wipeVersion),
+      form_data: visibleFormData(s, wipeVersion),
       work_mode: s.workMode,
       group_id: s.groupId,
       screenshot_url: screenshotUrl,
@@ -146,6 +172,7 @@ export const listActive = queryGeneric({
   args: { adminToken: v.string(), minutesThreshold: v.optional(v.number()) },
   handler: async ({ db, storage }, { adminToken, minutesThreshold }) => {
     await assertAdmin(db, adminToken);
+    const wipeVersion = await getGlobalResetVersion(db);
     const mins = Math.max(1, Math.floor(minutesThreshold ?? 5));
     const cutoff = Date.now() - mins * 60 * 1000;
 
@@ -166,7 +193,7 @@ export const listActive = queryGeneric({
         village_name: s.villageName,
         last_active: new Date(s.lastActive).toISOString(),
         created_at: new Date(s.createdAt).toISOString(),
-        form_progress: (s.formProgress || {}) as Record<string, boolean>,
+        form_progress: visibleFormProgress(s, wipeVersion),
         work_mode: s.workMode,
         group_id: s.groupId,
         screenshot_url: url,
@@ -180,6 +207,7 @@ export const listActive = queryGeneric({
 export const listActivePublic = queryGeneric({
   args: { minutesThreshold: v.optional(v.number()) },
   handler: async ({ db }, { minutesThreshold }) => {
+    const wipeVersion = await getGlobalResetVersion(db);
     const mins = Math.max(1, Math.floor(minutesThreshold ?? 5));
     const cutoff = Date.now() - mins * 60 * 1000;
     const rows = await db
@@ -195,7 +223,7 @@ export const listActivePublic = queryGeneric({
       village_name: s.villageName,
       last_active: new Date(s.lastActive).toISOString(),
       created_at: new Date(s.createdAt).toISOString(),
-      form_progress: (s.formProgress || {}) as Record<string, boolean>,
+      form_progress: visibleFormProgress(s, wipeVersion),
       work_mode: s.workMode,
       group_id: s.groupId,
     }));
@@ -210,6 +238,7 @@ export const listAll = queryGeneric({
   },
   handler: async ({ db, storage }, { adminToken, limit, paginationToken }) => {
     await assertAdmin(db, adminToken);
+    const wipeVersion = await getGlobalResetVersion(db);
     const numItems = normalizeLimit(limit);
     const res = await db
       .query("userSessions")
@@ -232,7 +261,7 @@ export const listAll = queryGeneric({
             village_name: s.villageName,
             last_active: new Date(s.lastActive).toISOString(),
             created_at: new Date(s.createdAt).toISOString(),
-            form_progress: (s.formProgress || {}) as Record<string, boolean>,
+            form_progress: visibleFormProgress(s, wipeVersion),
             work_mode: s.workMode,
             group_id: s.groupId,
             screenshot_url: url,

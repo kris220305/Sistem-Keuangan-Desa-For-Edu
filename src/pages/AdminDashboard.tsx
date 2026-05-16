@@ -22,6 +22,7 @@ import {
   getAllSessions, updateSiteSettings, deleteSession, deleteAllSessions,
   resetUserProgress, resetAllProgress,
   deleteReport, deleteAllReports, deleteReportPdf, deleteAllReportPdfs,
+  seedDemoDataForAll, wipeAllDataForAll,
   upsertVillageGroupLimit, type VillageGroupLimit,
 } from "@/lib/session-manager";
 import { startImpersonation } from "@/lib/admin-impersonation";
@@ -358,7 +359,7 @@ export default function AdminDashboard() {
       title: "Hapus Semua PDF",
       description: `PERINGATAN: Ini akan menghapus semua file PDF laporan yang tersimpan. Tindakan ini tidak bisa dibatalkan.`,
       action: async () => {
-        await deleteAllReportPdfs();
+        await deleteAllReportPdfs(reports.filter((r) => !!r.pdf_url).map((r) => r.id));
         toast.success("Semua PDF berhasil dihapus");
         refresh();
       },
@@ -394,8 +395,8 @@ export default function AdminDashboard() {
       title: "Reset Semua Progress",
       description: `PERINGATAN: Semua progress dan SELURUH data form (Penganggaran, Penatausahaan, Pembukuan, Laporan) dari ${sessions.length} user akan dihapus total. Aplikasi mereka akan otomatis dimuat ulang. Tindakan ini tidak dapat dibatalkan.`,
       action: async () => {
-        await resetAllProgress();
-        toast.success(`Progress ${sessions.length} user berhasil direset. Aplikasi user akan refresh otomatis.`);
+        const res = await resetAllProgress();
+        toast.success(`Progress direset realtime. ${res.groupStatesDeleted || 0} state dan ${res.chunksDeleted || 0} chunk dibersihkan.`);
         refresh();
       },
     });
@@ -415,19 +416,16 @@ export default function AdminDashboard() {
         "Ini akan memuat data demo ke SEMUA user dan kelompok secara otomatis. Data input user saat ini akan tertimpa oleh data demo.",
       action: async () => {
         try {
-          const adminToken = sessionStorage.getItem("siskeudes_admin_token");
-          if (!adminToken || !canUseConvex) {
+          if (!canUseConvex) {
             toast.error("Admin token tidak tersedia");
             return;
           }
           // Import demo data and send to server
           const { getDemoSeedData } = await import("@/data/demo-seed-data");
           const demoState = getDemoSeedData();
-          await convex!.mutation(anyApi.adminActions.seedDemoData, {
-            adminToken,
-            demoState: demoState as any,
-          } as any);
+          const res = await seedDemoDataForAll(demoState as any);
           toast.success("Data demo berhasil dimuat ke semua kelompok dan user. Semua user akan melihat update realtime.");
+          console.info("[admin] seed demo completed:", res);
           refresh();
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -445,14 +443,11 @@ export default function AdminDashboard() {
         "PERINGATAN: Ini akan menghapus seluruh data input di server (groupStates, formData, reportSubmissions). Semua user akan melihat data kosong secara realtime.",
       action: async () => {
         try {
-          const adminToken = sessionStorage.getItem("siskeudes_admin_token");
-          if (!adminToken || !canUseConvex) {
+          if (!canUseConvex) {
             toast.error("Admin token tidak tersedia");
             return;
           }
-          const res = await convex!.mutation(anyApi.adminActions.wipeAllData, {
-            adminToken,
-          } as any);
+          const res = await wipeAllDataForAll();
           toast.success(`Data berhasil direset. ${(res as any).groupStatesDeleted} groupStates dihapus, ${(res as any).sessionsCleared} session direset, ${(res as any).reportsDeleted} laporan dihapus.`);
           refresh();
         } catch (err) {
