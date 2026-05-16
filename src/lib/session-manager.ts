@@ -205,15 +205,10 @@ export async function getAllSessions() {
 }
 
 export async function deleteSession(sessionId: string) {
-  if (isConvexEnabled && convex) {
-    try {
-      const adminToken = getAdminToken();
-      if (adminToken) await getConvex().mutation(anyApi.sessions.remove, { adminToken, sessionId } as any);
-      await getConvex().mutation(anyApi.groups.leaveGroup, { sessionId });
-    } catch (err) {
-      console.error('[session] deleteSession failed:', err instanceof Error ? err.message : err);
-    }
-  }
+  if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
+  const adminToken = getAdminToken();
+  if (!adminToken) throw new Error("Admin token tidak tersedia");
+  await getConvex().mutation(anyApi.adminActions.kickUser, { adminToken, sessionId } as any);
 }
 
 export async function getActiveSessions(minutesThreshold = 5) {
@@ -235,21 +230,21 @@ export async function deleteAllSessions() {
   if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
   const adminToken = getAdminToken();
   if (!adminToken) throw new Error("Admin token tidak tersedia");
-  await getConvex().mutation(anyApi.sessions.removeAll, { adminToken } as any);
+  await getConvex().mutation(anyApi.adminActions.kickAllUsers, { adminToken } as any);
 }
 
 export async function resetUserProgress(sessionId: string) {
   if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
   const adminToken = getAdminToken();
   if (!adminToken) throw new Error("Admin token tidak tersedia");
-  await getConvex().mutation(anyApi.sessions.clearFormProgress, { adminToken, sessionId } as any);
+  await getConvex().mutation(anyApi.adminActions.resetUserProgress, { adminToken, sessionId } as any);
 }
 
 export async function resetAllProgress() {
   if (!isConvexEnabled || !convex) throw new Error("Convex belum dikonfigurasi.");
   const adminToken = getAdminToken();
   if (!adminToken) throw new Error("Admin token tidak tersedia");
-  await getConvex().mutation(anyApi.sessions.clearAllFormProgress, { adminToken } as any);
+  await getConvex().mutation(anyApi.adminActions.resetAllProgress, { adminToken } as any);
 }
 
 export async function deleteReport(id: string) {
