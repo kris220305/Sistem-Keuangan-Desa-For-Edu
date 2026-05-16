@@ -8,7 +8,6 @@ import { Lock, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { saveState } from "@/data/app-state";
 
 // Admin bypass now validated server-side via Convex admin.login mutation
 // No hardcoded password in frontend
@@ -22,27 +21,6 @@ function wipeLocalUserData() {
     }
   }
   sessionStorage.clear();
-}
-
-function wipeAllDataInput() {
-  saveState({
-    pendapatan: [],
-    belanja: [],
-    pembiayaan: [],
-    penerimaan: [],
-    silpa: [],
-    spp: [],
-    pencairan: [],
-    penyetoranPajak: [],
-    saldoAwal: [],
-    spjPanjar: [],
-    jurnalUmum: [],
-    kegiatanAnggaran: [],
-    sisaPanjar: [],
-    __meta: {},
-  });
-  try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
-  try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
 }
 
 function getLastLocalWriteAt(): number {
@@ -99,14 +77,13 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
     const appliedWipe = Math.max(0, Math.floor(Number(localStorage.getItem("siskeudes_wipe_all_applied_v") || "0") || 0));
     if (wipeVer > 0 && wipeVer !== appliedWipe) {
       localStorage.setItem("siskeudes_wipe_all_applied_v", String(wipeVer));
-      // Wipe local data
-      saveState({
-        pendapatan: [], belanja: [], pembiayaan: [], penerimaan: [], silpa: [],
-        spp: [], pencairan: [], penyetoranPajak: [], saldoAwal: [], spjPanjar: [],
-        sisaPanjar: [], jurnalUmum: [], kegiatanAnggaran: [], __meta: {},
-      });
-      try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
-      try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
+      // Pause sync to prevent pushing empty state back to server
+      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
+      // Clear local cache directly (don't use saveState which triggers sync)
+      localStorage.removeItem("siskeudes_state");
+      localStorage.removeItem("siskeudes_app_state");
+      localStorage.removeItem("siskeudes_mutasi_kas");
+      window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
       toast.success("Semua data input direset oleh admin.");
     }
 
@@ -115,11 +92,16 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
     const appliedDemo = Math.max(0, Math.floor(Number(localStorage.getItem("siskeudes_demo_seed_applied_v") || "0") || 0));
     if (demoVer > 0 && demoVer !== appliedDemo) {
       localStorage.setItem("siskeudes_demo_seed_applied_v", String(demoVer));
+      // Pause sync to prevent pushing demo state back to server
+      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
       import("@/data/demo-seed-data").then(({ getDemoSeedData }) => {
         const demo = getDemoSeedData();
-        saveState(demo);
-        try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
-        try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
+        // Write directly to localStorage cache (don't use saveState which triggers sync)
+        const json = JSON.stringify(demo);
+        localStorage.setItem("siskeudes_state", json);
+        localStorage.setItem("siskeudes_app_state", json);
+        localStorage.removeItem("siskeudes_mutasi_kas");
+        window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
         toast.success("Data demo dimuat oleh admin.");
       });
     }
@@ -225,7 +207,12 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
             return;
           }
           localStorage.setItem("siskeudes_wipe_all_applied_v", String(wipeVer));
-          wipeAllDataInput();
+          // Pause sync + clear cache directly (don't trigger saveState sync)
+          localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
+          localStorage.removeItem("siskeudes_state");
+          localStorage.removeItem("siskeudes_app_state");
+          localStorage.removeItem("siskeudes_mutasi_kas");
+          window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
           toast.success("Semua data input direset oleh admin.");
           return;
         }
@@ -237,11 +224,15 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
             return;
           }
           localStorage.setItem("siskeudes_demo_seed_applied_v", String(demoVer));
+          // Pause sync + write cache directly (don't trigger saveState sync)
+          localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
           import("@/data/demo-seed-data").then(({ getDemoSeedData: getDemo }) => {
             const demo = getDemo();
-            saveState(demo);
-            try { localStorage.removeItem("siskeudes_mutasi_kas"); } catch {}
-            try { window.dispatchEvent(new CustomEvent("siskeudes:state-updated")); } catch {}
+            const json = JSON.stringify(demo);
+            localStorage.setItem("siskeudes_state", json);
+            localStorage.setItem("siskeudes_app_state", json);
+            localStorage.removeItem("siskeudes_mutasi_kas");
+            window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
             toast.success("Data demo dimuat oleh admin.");
           });
           return;
