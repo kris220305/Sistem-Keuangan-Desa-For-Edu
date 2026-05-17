@@ -277,7 +277,7 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
   useEffect(() => {
     if ((locked || maxReached) && !bypassed) return;
     heartbeat();
-    const ms = isConvexEnabled ? 15000 : 120000;
+    const ms = isConvexEnabled ? 25000 : 120000;
     const interval = setInterval(heartbeat, ms);
     const onFocus = () => heartbeat();
     const onVis = () => {
