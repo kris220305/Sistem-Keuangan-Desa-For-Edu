@@ -61,11 +61,6 @@ export default function SPJKegiatan() {
   const [selectedBuktiId, setSelectedBuktiId] = useState<string | null>(null);
   const [buktiForm, setBuktiForm] = useState<Omit<BuktiTransaksi, "id" | "potonganPajak">>({ tanggal: new Date().toISOString().slice(0, 10), noBukti: "", keterangan: "", jumlah: 0, penerima: "", nama: "", alamat: "" });
 
-  // Potongan sub-form
-  const [potMode, setPotMode] = useState<Mode>("view");
-  const [selectedPotIdx, setSelectedPotIdx] = useState<number | null>(null);
-  const [potForm, setPotForm] = useState<PotonganPajak>({ kodeRekening: "", namaRekening: "", nilai: 0 });
-
   const rekeningPajak = getRekeningDetail("non_anggaran");
 
   const generateNoSPJ = () => `${String((state.spjPanjar || []).length + 1).padStart(4, "0")}/SPJ/05.2001/2024`;
@@ -208,30 +203,52 @@ export default function SPJKegiatan() {
     toast.success("Kwitansi dihapus");
   };
 
-  // ===== Potongan CRUD =====
-  const handleTambahPot = () => {
-    if (!selectedSPJ) { toast.error("Pilih SPJ"); return; }
-    setPotMode("add"); setSelectedPotIdx(null);
-    setPotForm({ kodeRekening: "", namaRekening: "", nilai: 0 });
-  };
-  const handleSimpanPot = () => {
-    if (!selectedSPJ) return;
-    if (!potForm.kodeRekening) { toast.error("Pilih rekening pajak"); return; }
-    if (potForm.nilai <= 0) { toast.error("Nilai harus > 0"); return; }
-    let updP: PotonganPajak[];
-    if (potMode === "add") updP = [...(selectedSPJ.potongan || []), { ...potForm }];
-    else updP = (selectedSPJ.potongan || []).map((p, i) => i === selectedPotIdx ? { ...potForm } : p);
-    updateSelectedSPJ({ potongan: updP });
-    setPotMode("view"); setSelectedPotIdx(null);
-    toast.success("Potongan disimpan");
-  };
-  const handleHapusPot = () => {
-    if (!selectedSPJ || selectedPotIdx === null) { toast.error("Pilih potongan"); return; }
-    updateSelectedSPJ({ potongan: (selectedSPJ.potongan || []).filter((_, i) => i !== selectedPotIdx) });
-    setSelectedPotIdx(null);
-    toast.success("Potongan dihapus");
+  // ===== Potongan — otomatis dari buktiKwitansi =====
+  // Tab Potongan hanya menampilkan ringkasan dari semua potongan di buktiKwitansi
+  // User menambah potongan di level kwitansi (per bukti)
+  const computedPotongan = useMemo(() => {
+    if (!selectedSPJ) return [];
+    return (selectedSPJ.buktiKwitansi || []).flatMap(bt =>
+      (bt.potonganPajak || []).map(p => ({ ...p, noBukti: bt.noBukti, buktiId: bt.id }))
+    );
+  }, [selectedSPJ]);
+
+  // Sync potongan[] array dari buktiKwitansi setiap kali buktiKwitansi berubah
+  const syncPotonganFromBukti = (updatedBukti: BuktiTransaksi[]) => {
+    const allPot: PotonganPajak[] = updatedBukti.flatMap(bt =>
+      (bt.potonganPajak || []).map(p => ({ kodeRekening: p.kodeRekening, namaRekening: p.namaRekening, nilai: p.nilai }))
+    );
+    return allPot;
   };
 
+  // Potongan per kwitansi — form state
+  const [kwitansiPotForm, setKwitansiPotForm] = useState<PotonganPajak>({ kodeRekening: "", namaRekening: "", nilai: 0 });
+
+  const selectedBukti = (selectedSPJ?.buktiKwitansi || []).find(b => b.id === selectedBuktiId) || null;
+  const selectedBuktiPotongan = selectedBukti?.potonganPajak || [];
+
+  const handleTambahPotKwitansi = () => {
+    if (!selectedSPJ || !selectedBuktiId) { toast.error("Pilih kwitansi terlebih dahulu"); return; }
+    if (!kwitansiPotForm.kodeRekening) { toast.error("Pilih rekening pajak"); return; }
+    if (kwitansiPotForm.nilai <= 0) { toast.error("Nilai harus > 0"); return; }
+    const updBukti = (selectedSPJ.buktiKwitansi || []).map(b => {
+      if (b.id !== selectedBuktiId) return b;
+      return { ...b, potonganPajak: [...(b.potonganPajak || []), { ...kwitansiPotForm }] };
+    });
+    updateSelectedSPJ({ buktiKwitansi: updBukti, potongan: syncPotonganFromBukti(updBukti) });
+    setKwitansiPotForm({ kodeRekening: "", namaRekening: "", nilai: 0 });
+    toast.success("Potongan pajak ditambahkan ke kwitansi");
+  };
+
+  const handleHapusPotKwitansi = (potIdx: number) => {
+    if (!selectedSPJ || !selectedBuktiId) return;
+    const updBukti = (selectedSPJ.buktiKwitansi || []).map(b => {
+      if (b.id !== selectedBuktiId) return b;
+      return { ...b, potonganPajak: (b.potonganPajak || []).filter((_, i) => i !== potIdx) };
+    });
+    updateSelectedSPJ({ buktiKwitansi: updBukti, potongan: syncPotonganFromBukti(updBukti) });
+    toast.success("Potongan dihapus");
+  };
   // ============ SISA PANJAR ============
   const [selectedSisaId, setSelectedSisaId] = useState<string | null>(null);
   const selectedSisa = (state.sisaPanjar || []).find(s => s.id === selectedSisaId) || null;
@@ -518,32 +535,73 @@ export default function SPJKegiatan() {
               <ActionBar onTambah={handleTambahBukti}
                 onUbah={() => { if (!selectedBuktiId) { toast.error("Pilih kwitansi"); return; } setBuktiMode("edit"); }}
                 onHapus={handleHapusBukti} onBatal={() => setBuktiMode("view")} onSimpan={handleSimpanBukti} />
+
+              {/* Potongan Pajak per Kwitansi (inline) */}
+              {selectedBukti && (
+                <div className="border-t border-border p-3 bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-semibold">Potongan Pajak — {selectedBukti.noBukti}</p>
+                    <p className="text-[10px] text-muted-foreground">Total: Rp {fmt(selectedBuktiPotongan.reduce((s, p) => s + p.nilai, 0))}</p>
+                  </div>
+                  {selectedBuktiPotongan.length > 0 && (
+                    <div className="border border-border rounded overflow-hidden">
+                      <Table>
+                        <TableHeader><TableRow className="bg-secondary/40 text-[10px]">
+                          <TableHead>Kode</TableHead><TableHead>Nama</TableHead><TableHead className="text-right">Nilai</TableHead><TableHead className="w-8"></TableHead>
+                        </TableRow></TableHeader>
+                        <TableBody>
+                          {selectedBuktiPotongan.map((p, i) => (
+                            <TableRow key={i} className="text-[10px]">
+                              <TableCell className="font-mono">{p.kodeRekening}</TableCell>
+                              <TableCell>{p.namaRekening}</TableCell>
+                              <TableCell className="text-right">{fmt(p.nilai)}</TableCell>
+                              <TableCell><Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => handleHapusPotKwitansi(i)}><Trash2 size={10} /></Button></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Select value={kwitansiPotForm.kodeRekening} onValueChange={v => {
+                      const r = rekeningPajak.find(x => x.kode === v);
+                      setKwitansiPotForm({ kodeRekening: v, namaRekening: r?.uraian || "", nilai: kwitansiPotForm.nilai });
+                    }}>
+                      <SelectTrigger className="h-6 text-[10px] w-[180px]"><SelectValue placeholder="Rekening pajak" /></SelectTrigger>
+                      <SelectContent>{rekeningPajak.map(r => <SelectItem key={r.kode} value={r.kode} className="text-[10px]">{r.kode} — {r.uraian}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Input type="number" className="h-6 text-[10px] w-24 text-right" placeholder="Nilai"
+                      value={kwitansiPotForm.nilai || ""} onChange={e => setKwitansiPotForm({ ...kwitansiPotForm, nilai: Number(e.target.value) })} />
+                    <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={handleTambahPotKwitansi}><Plus size={10} />Tambah</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* ===== TAB: POTONGAN ===== */}
+          {/* ===== TAB: POTONGAN (Read-only summary dari buktiKwitansi) ===== */}
           {activeTab === "potongan" && selectedSPJ && (
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="px-4 py-2 border-b border-border bg-secondary/30 text-[11px] flex items-center justify-between">
                 <span><span className="text-muted-foreground">SPJ:</span> <span className="font-mono font-semibold">{selectedSPJ.nomorSPJ}</span></span>
-                <span className="text-[10px] text-muted-foreground italic">Otomatis terkirim ke Penyetoran Pajak</span>
+                <span className="text-[10px] text-muted-foreground italic">Otomatis dari Bukti Kwitansi → Penyetoran Pajak</span>
               </div>
               <div className="flex-1 overflow-auto border-b border-border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-secondary/60 text-[11px]">
+                      <TableHead>No Bukti Kwitansi</TableHead>
                       <TableHead>Kode Rekening</TableHead>
                       <TableHead>Nama Rekening</TableHead>
                       <TableHead className="text-right">Nilai</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(selectedSPJ.potongan || []).length === 0 ? (
-                      <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6 text-xs">Belum ada potongan</TableCell></TableRow>
-                    ) : (selectedSPJ.potongan || []).map((p, i) => (
-                      <TableRow key={i}
-                        className={`cursor-pointer text-[11px] ${selectedPotIdx === i ? "bg-primary/10" : "hover:bg-muted/50"}`}
-                        onClick={() => { setSelectedPotIdx(i); setPotMode("view"); setPotForm({ ...p }); }}>
+                    {computedPotongan.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6 text-xs">Belum ada potongan pajak. Tambahkan di tab Bukti Kwitansi.</TableCell></TableRow>
+                    ) : computedPotongan.map((p, i) => (
+                      <TableRow key={i} className="text-[11px]">
+                        <TableCell className="font-mono">{p.noBukti}</TableCell>
                         <TableCell className="font-mono">{p.kodeRekening}</TableCell>
                         <TableCell>{p.namaRekening}</TableCell>
                         <TableCell className="text-right font-medium">{fmt(p.nilai)}</TableCell>
@@ -552,24 +610,15 @@ export default function SPJKegiatan() {
                   </TableBody>
                 </Table>
               </div>
-              <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
-                <div className="col-span-2 flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Rekening Pajak</Label>
-                  <Select value={potForm.kodeRekening} disabled={potMode === "view"} onValueChange={v => {
-                    const r = rekeningPajak.find(x => x.kode === v);
-                    setPotForm({ ...potForm, kodeRekening: v, namaRekening: r?.uraian || "" });
-                  }}>
-                    <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Pilih rekening pajak" /></SelectTrigger>
-                    <SelectContent>{rekeningPajak.map(r => <SelectItem key={r.kode} value={r.kode} className="text-[11px]">{r.kode} — {r.uraian}</SelectItem>)}</SelectContent>
-                  </Select>
+              <div className="px-4 py-3 bg-muted/10 border-t border-border">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Total Potongan Pajak:</span>
+                  <span className="font-semibold">Rp {fmt(computedPotongan.reduce((s, p) => s + p.nilai, 0))}</span>
                 </div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nama Rekening</Label>
-                  <Input className="h-7 text-[11px]" readOnly value={potForm.namaRekening} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nilai</Label>
-                  <Input type="number" className="h-7 text-[11px] text-right" readOnly={potMode === "view"} value={potForm.nilai || ""} onChange={e => setPotForm({ ...potForm, nilai: Number(e.target.value) })} /></div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Potongan pajak diinput per kwitansi di tab "Bukti Kwitansi". Pilih kwitansi lalu tambah potongan di bagian bawah.
+                </p>
               </div>
-              <ActionBar onTambah={handleTambahPot}
-                onUbah={() => { if (selectedPotIdx === null) { toast.error("Pilih potongan"); return; } setPotMode("edit"); }}
-                onHapus={handleHapusPot} onBatal={() => setPotMode("view")} onSimpan={handleSimpanPot} />
             </div>
           )}
 
