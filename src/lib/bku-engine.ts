@@ -307,20 +307,94 @@ export function buildBKU(
       });
     }
 
-    (spp.buktiTransaksi || []).forEach((bt) => {
-      (bt.potonganPajak || []).forEach((pp) => {
-        if (jenis === "tunai" && !isTunai) return;
-        if (jenis === "bank" && isTunai) return;
+    // Potongan pajak dari SPP buktiTransaksi
+    // Skip untuk SPP panjar yang sudah punya SPJ (potongan dicatat di level SPJ)
+    const isPanjarWithSpj = spp.jenis === "panjar" &&
+      (state.spjPanjar || []).some((spj) => spj.sppId === spp.id);
+
+    if (!isPanjarWithSpj) {
+      (spp.buktiTransaksi || []).forEach((bt) => {
+        (bt.potonganPajak || []).forEach((pp) => {
+          if (jenis === "tunai" && !isTunai) return;
+          if (jenis === "bank" && isTunai) return;
+          pushTx({
+            tanggal: pc.tanggal,
+            kodeRekening: pp.kodeRekening,
+            uraian: `Potongan Pajak ${pp.namaRekening}`.trim(),
+            penerimaan: Number(pp.nilai || 0),
+            pengeluaran: 0,
+            noBukti: bt.noBukti,
+            kind: "potongan_pajak",
+            sourceId: `${pc.id}:${bt.id}:${pp.kodeRekening}`,
+          });
+        });
+      });
+    }
+  });
+
+  // ===== PENYETORAN PAJAK → Pengeluaran (mengurangi kas) =====
+  (state.penyetoranPajak || []).forEach((pp) => {
+    const j = Number(pp.jumlah || 0);
+    if (!j) return;
+    const isTunai = pp.jenis === "tunai";
+    if (jenis === "tunai" && !isTunai) return;
+    if (jenis === "bank" && isTunai) return;
+    const kodeKas = isTunai ? "1.1.1.01" : "1.1.1.02";
+    pushTx({
+      tanggal: pp.tanggal,
+      kodeRekening: kodeKas,
+      uraian: `Penyetoran Pajak ${pp.keterangan || ""}`.trim(),
+      penerimaan: 0,
+      pengeluaran: j,
+      noBukti: pp.noBukti,
+      kind: "pengeluaran",
+      sourceId: `pajak:${pp.id}`,
+    });
+  });
+
+  // ===== POTONGAN PAJAK dari SPJ Panjar (buktiKwitansi) → Penerimaan =====
+  (state.spjPanjar || []).forEach((spj) => {
+    const spp = (state.spp || []).find((s) => s.id === spj.sppId);
+    if (!spp) return;
+    if ((spp as any).isFinal === false) return;
+
+    const pc = pcBySppId.get(spp.id);
+    const pembayaran = pc?.pembayaran || spp.pembayaran || "bank";
+    const isTunai = pembayaran === "tunai";
+    if (jenis === "tunai" && !isTunai) return;
+    if (jenis === "bank" && isTunai) return;
+
+    const tanggal = spj.tanggalSPJ || pc?.tanggal || spp.tanggalSPP;
+
+    // Potongan dari buktiKwitansi SPJ Panjar
+    (spj.buktiKwitansi || []).forEach((bt) => {
+      (bt.potonganPajak || []).forEach((pot) => {
+        if (!pot.nilai) return;
         pushTx({
-          tanggal: pc.tanggal,
-          kodeRekening: pp.kodeRekening,
-          uraian: `Potongan Pajak ${pp.namaRekening}`.trim(),
-          penerimaan: Number(pp.nilai || 0),
+          tanggal,
+          kodeRekening: pot.kodeRekening,
+          uraian: `Potongan Pajak ${pot.namaRekening}`.trim(),
+          penerimaan: Number(pot.nilai || 0),
           pengeluaran: 0,
           noBukti: bt.noBukti,
           kind: "potongan_pajak",
-          sourceId: `${pc.id}:${bt.id}:${pp.kodeRekening}`,
+          sourceId: `spj:${spj.id}:${bt.id}:${pot.kodeRekening}`,
         });
+      });
+    });
+
+    // Potongan dari array potongan[] SPJ Panjar (level SPJ)
+    (spj.potongan || []).forEach((pot, idx) => {
+      if (!pot.nilai) return;
+      pushTx({
+        tanggal,
+        kodeRekening: pot.kodeRekening,
+        uraian: `Potongan Pajak SPJ ${pot.namaRekening}`.trim(),
+        penerimaan: Number(pot.nilai || 0),
+        pengeluaran: 0,
+        noBukti: spj.nomorSPJ,
+        kind: "potongan_pajak",
+        sourceId: `spj:${spj.id}:pot:${idx}`,
       });
     });
   });
