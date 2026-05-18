@@ -6,11 +6,17 @@ import ImpersonationBanner from "./ImpersonationBanner";
 import EditingPresenceBar from "./EditingPresenceBar";
 import { useGroupRealtimeSync } from "@/hooks/use-group-realtime-sync";
 import { useSyncStatusListener } from "@/hooks/use-sync-status-listener";
+import { isConvexEnabled } from "@/integrations/convex/client";
 import bgLandscape from "@/assets/bg-sawah-sunset.jpg";
 import { flushSaveStateNow } from "@/data/app-state";
 
-export default function AppLayout() {
+/** Only mounts realtime sync when Convex is available */
+function RealtimeSyncBridge() {
   useGroupRealtimeSync();
+  return null;
+}
+
+export default function AppLayout() {
   useSyncStatusListener();
   const location = useLocation();
   const [transitioning, setTransitioning] = useState(false);
@@ -45,6 +51,9 @@ export default function AppLayout() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      {/* Realtime sync — only when Convex is configured */}
+      {isConvexEnabled && <RealtimeSyncBridge />}
+
       {/* Admin impersonation banner (only renders when active) */}
       <ImpersonationBanner />
 
