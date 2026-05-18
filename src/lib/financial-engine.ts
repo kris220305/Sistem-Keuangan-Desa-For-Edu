@@ -427,17 +427,46 @@ export function generateNeraca(state: AppState): NeracaItem[] {
           saldoMap.set('2.1.3.02', (saldoMap.get('2.1.3.02') || 0) + pp.nilai);
         } else if (pp.kodeRekening === '7.1.1.03') {
           saldoMap.set('2.1.3.03', (saldoMap.get('2.1.3.03') || 0) + pp.nilai);
+        } else if (pp.kodeRekening.startsWith('7.1.1')) {
+          saldoMap.set('2.1.3.01', (saldoMap.get('2.1.3.01') || 0) + pp.nilai);
+        } else if (pp.kodeRekening.startsWith('7.1.2')) {
+          saldoMap.set('2.1.3.02', (saldoMap.get('2.1.3.02') || 0) + pp.nilai);
         }
       });
     });
   });
+
+  // 2b. Potongan pajak dari SPJ Panjar (buktiKwitansi + potongan[])
+  (state.spjPanjar || []).forEach(spj => {
+    (spj.buktiKwitansi || []).forEach(bt => {
+      (bt.potonganPajak || []).forEach(pp => {
+        if (!pp.nilai) return;
+        if (pp.kodeRekening.startsWith('7.1.1')) {
+          saldoMap.set('2.1.3.01', (saldoMap.get('2.1.3.01') || 0) + pp.nilai);
+        } else if (pp.kodeRekening.startsWith('7.1.2')) {
+          saldoMap.set('2.1.3.02', (saldoMap.get('2.1.3.02') || 0) + pp.nilai);
+        }
+      });
+    });
+    (spj.potongan || []).forEach(pp => {
+      if (!pp.nilai) return;
+      if (pp.kodeRekening.startsWith('7.1.1')) {
+        saldoMap.set('2.1.3.01', (saldoMap.get('2.1.3.01') || 0) + pp.nilai);
+      } else if (pp.kodeRekening.startsWith('7.1.2')) {
+        saldoMap.set('2.1.3.02', (saldoMap.get('2.1.3.02') || 0) + pp.nilai);
+      }
+    });
+  });
   
-  // 3. Penyetoran pajak → Dr Hutang Pajak, Cr Kas Bank
+  // 3. Penyetoran pajak → Dr Hutang Pajak, Cr Kas
   state.penyetoranPajak.forEach(pp => {
-    saldoMap.set('1.1.1.02', (saldoMap.get('1.1.1.02') || 0) - pp.jumlah);
+    const kasKode = pp.jenis === "tunai" ? "1.1.1.01" : "1.1.1.02";
+    saldoMap.set(kasKode, (saldoMap.get(kasKode) || 0) - pp.jumlah);
     // Reduce hutang pajak based on kodeRekening
-    if (pp.kodeRekening.startsWith('7.1.1.01')) {
+    if (pp.kodeRekening.startsWith('7.1.1')) {
       saldoMap.set('2.1.3.01', (saldoMap.get('2.1.3.01') || 0) - pp.jumlah);
+    } else if (pp.kodeRekening.startsWith('7.1.2')) {
+      saldoMap.set('2.1.3.02', (saldoMap.get('2.1.3.02') || 0) - pp.jumlah);
     }
   });
 
@@ -612,6 +641,38 @@ export function generateBKPPajak(state: AppState): BKPPajakEntry[] {
           jenisPajak: pp.namaRekening,
           pemotongan: pp.nilai, penyetoran: 0, saldo,
         });
+      });
+    });
+  });
+
+  // Potongan pajak dari SPJ Panjar (buktiKwitansi)
+  (state.spjPanjar || []).forEach(spj => {
+    (spj.buktiKwitansi || []).forEach(bt => {
+      (bt.potonganPajak || []).forEach(pp => {
+        if (!pp.nilai) return;
+        saldo += pp.nilai;
+        entries.push({
+          no: no++, tanggal: bt.tanggal || spj.tanggalSPJ, noBukti: bt.noBukti,
+          uraian: bt.keterangan || `SPJ Panjar ${spj.nomorSPJ}`,
+          jenisPajak: pp.namaRekening,
+          pemotongan: pp.nilai, penyetoran: 0, saldo,
+        });
+      });
+    });
+    // Also include potongan[] level SPJ (if not already from buktiKwitansi)
+    const bkNoBuktis = new Set((spj.buktiKwitansi || []).flatMap(bt =>
+      (bt.potonganPajak || []).map(p => `${bt.noBukti}|${p.kodeRekening}|${p.nilai}`)
+    ));
+    (spj.potongan || []).forEach(pp => {
+      if (!pp.nilai) return;
+      const key = `${spj.nomorSPJ}|${pp.kodeRekening}|${pp.nilai}`;
+      if (bkNoBuktis.has(key)) return; // avoid double-count
+      saldo += pp.nilai;
+      entries.push({
+        no: no++, tanggal: spj.tanggalSPJ, noBukti: spj.nomorSPJ,
+        uraian: `Potongan Pajak SPJ Panjar ${spj.nomorSPJ}`,
+        jenisPajak: pp.namaRekening,
+        pemotongan: pp.nilai, penyetoran: 0, saldo,
       });
     });
   });

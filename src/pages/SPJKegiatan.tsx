@@ -102,14 +102,43 @@ export default function SPJKegiatan() {
       const spp = panjarSPPs.find(s => s.id === spjForm.sppId);
       if (!spp) return;
       const totalCair = getEffectivePencairan(state).filter(p => p.sppId === spp.id).reduce((s, p) => s + p.netto, 0) || spp.jumlah;
+      // Auto-populate buktiKwitansi from SPP's buktiTransaksi
+      const autoBukti: BuktiTransaksi[] = (spp.buktiTransaksi || []).map(bt => ({
+        id: crypto.randomUUID(),
+        tanggal: bt.tanggal,
+        noBukti: bt.noBukti,
+        keterangan: bt.keterangan,
+        jumlah: bt.jumlah,
+        penerima: bt.penerima,
+        nama: bt.nama,
+        alamat: bt.alamat,
+        potonganPajak: bt.potonganPajak ? [...bt.potonganPajak] : [],
+      }));
+      // Auto-populate potongan from SPP's buktiTransaksi potonganPajak
+      const autoPotongan: PotonganPajak[] = (spp.buktiTransaksi || []).flatMap(bt =>
+        (bt.potonganPajak || []).filter(p => p.nilai > 0)
+      );
+      // Auto-populate rincianSPJ from SPP's rincian
+      const autoRincian: SPJRincian[] = (spp.rincian || []).map(r => ({
+        id: crypto.randomUUID(),
+        kodeRekening: r.kodeRekening,
+        namaRekening: r.namaRekening,
+        nilai: r.nilai,
+        belanjaId: r.id,
+        noRef: r.noRef || "",
+        kodeKegiatan: r.kodeKegiatan || "",
+        namaKegiatan: r.namaKegiatan || "",
+      }));
+      const jumlahSPJ = autoRincian.reduce((a, r) => a + (r.nilai || 0), 0);
       const newItem: SPJPanjarItem = {
         id: crypto.randomUUID(), sppId: spp.id, tanggalSPJ: spjForm.tanggalSPJ, nomorSPJ: spjForm.nomorSPJ,
-        nomorSPP: spp.nomorSPP, jumlahCair: totalCair, jumlahSPJ: 0, sisa: totalCair,
-        keterangan: spjForm.keterangan || spp.uraian, rincianSPJ: [], buktiKwitansi: [], potongan: [],
+        nomorSPP: spp.nomorSPP, jumlahCair: totalCair, jumlahSPJ, sisa: totalCair - jumlahSPJ,
+        keterangan: spjForm.keterangan || spp.uraian,
+        rincianSPJ: autoRincian, buktiKwitansi: autoBukti, potongan: autoPotongan,
       };
       persist({ ...state, spjPanjar: [...(state.spjPanjar || []), newItem] });
       setSelectedSPJId(newItem.id);
-      toast.success("SPJ Panjar dibuat");
+      toast.success("SPJ Panjar dibuat (rincian, kwitansi & potongan otomatis dari SPP)");
     } else if (mode === "edit" && selectedSPJ) {
       const updated = (state.spjPanjar || []).map(s => s.id === selectedSPJ.id
         ? { ...s, tanggalSPJ: spjForm.tanggalSPJ, nomorSPJ: spjForm.nomorSPJ, keterangan: spjForm.keterangan }

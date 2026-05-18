@@ -33,7 +33,7 @@ export default function PenyetoranPajak() {
 
   const pajakRekening = rekeningData.filter(r => r.kode.startsWith("7.1"));
 
-  // Kumpulkan semua potongan dari SEMUA sumber (SPP + SPJ Panjar Kegiatan)
+  // Kumpulkan semua potongan dari SEMUA sumber (SPP + SPJ Panjar Kegiatan buktiKwitansi + SPJ Panjar potongan[])
   const allBuktiPotong = useMemo(() => {
     const fromSpp = state.spp.flatMap((s) =>
       s.buktiTransaksi.flatMap((bt) =>
@@ -46,7 +46,20 @@ export default function PenyetoranPajak() {
         })),
       ),
     );
-    const fromSpj = (state.spjPanjar || []).flatMap((spj) =>
+    // Potongan dari buktiKwitansi di SPJ Panjar
+    const fromSpjBukti = (state.spjPanjar || []).flatMap((spj) =>
+      (spj.buktiKwitansi || []).flatMap((bt) =>
+        (bt.potonganPajak || []).map((p) => ({
+          noBukti: bt.noBukti,
+          kodeRekening: p.kodeRekening,
+          namaRekening: p.namaRekening,
+          nilai: p.nilai,
+          sumber: `SPJ Panjar KW ${spj.nomorSPJ}`,
+        })),
+      ),
+    );
+    // Potongan dari array potongan[] level SPJ (backward compat)
+    const fromSpjLevel = (state.spjPanjar || []).flatMap((spj) =>
       (spj.potongan || []).map((p) => ({
         noBukti: spj.nomorSPJ,
         kodeRekening: p.kodeRekening,
@@ -55,7 +68,12 @@ export default function PenyetoranPajak() {
         sumber: `SPJ Panjar ${spj.nomorSPJ}`,
       })),
     );
-    return [...fromSpp, ...fromSpj].filter((x) => Number(x.nilai || 0) > 0);
+    // Deduplicate: if same noBukti+kodeRekening+nilai exists in both fromSpjBukti and fromSpjLevel, prefer fromSpjBukti
+    const spjBuktiKeys = new Set(fromSpjBukti.map((b) => `${b.noBukti}|${b.kodeRekening}|${b.nilai}`));
+    const dedupedSpjLevel = fromSpjLevel.filter(
+      (b) => !spjBuktiKeys.has(`${b.noBukti}|${b.kodeRekening}|${b.nilai}`)
+    );
+    return [...fromSpp, ...fromSpjBukti, ...dedupedSpjLevel].filter((x) => Number(x.nilai || 0) > 0);
   }, [state.spp, state.spjPanjar]);
 
   const [form, setForm] = useState({
