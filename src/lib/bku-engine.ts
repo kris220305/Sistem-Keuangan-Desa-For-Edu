@@ -307,22 +307,29 @@ export function buildBKU(
       });
     }
 
-    (spp.buktiTransaksi || []).forEach((bt) => {
-      (bt.potonganPajak || []).forEach((pp) => {
-        if (jenis === "tunai" && !isTunai) return;
-        if (jenis === "bank" && isTunai) return;
-        pushTx({
-          tanggal: pc.tanggal,
-          kodeRekening: pp.kodeRekening,
-          uraian: `Potongan Pajak ${pp.namaRekening}`.trim(),
-          penerimaan: Number(pp.nilai || 0),
-          pengeluaran: 0,
-          noBukti: bt.noBukti,
-          kind: "potongan_pajak",
-          sourceId: `${pc.id}:${bt.id}:${pp.kodeRekening}`,
+    // Potongan pajak dari SPP buktiTransaksi
+    // Skip untuk SPP panjar yang sudah punya SPJ (potongan dicatat di level SPJ)
+    const isPanjarWithSpj = spp.jenis === "panjar" &&
+      (state.spjPanjar || []).some((spj) => spj.sppId === spp.id);
+
+    if (!isPanjarWithSpj) {
+      (spp.buktiTransaksi || []).forEach((bt) => {
+        (bt.potonganPajak || []).forEach((pp) => {
+          if (jenis === "tunai" && !isTunai) return;
+          if (jenis === "bank" && isTunai) return;
+          pushTx({
+            tanggal: pc.tanggal,
+            kodeRekening: pp.kodeRekening,
+            uraian: `Potongan Pajak ${pp.namaRekening}`.trim(),
+            penerimaan: Number(pp.nilai || 0),
+            pengeluaran: 0,
+            noBukti: bt.noBukti,
+            kind: "potongan_pajak",
+            sourceId: `${pc.id}:${bt.id}:${pp.kodeRekening}`,
+          });
         });
       });
-    });
+    }
   });
 
   // ===== PENYETORAN PAJAK → Pengeluaran (mengurangi kas) =====

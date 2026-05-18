@@ -33,19 +33,27 @@ export default function PenyetoranPajak() {
 
   const pajakRekening = rekeningData.filter(r => r.kode.startsWith("7.1"));
 
-  // Kumpulkan semua potongan dari SEMUA sumber (SPP + SPJ Panjar Kegiatan buktiKwitansi + SPJ Panjar potongan[])
+  // Kumpulkan semua potongan dari SEMUA sumber (SPP definitif/pembiayaan + SPJ Panjar buktiKwitansi + SPJ Panjar potongan[])
+  // Untuk SPP panjar yang sudah punya SPJ, potongan diambil dari SPJ (bukan dari SPP)
   const allBuktiPotong = useMemo(() => {
-    const fromSpp = state.spp.flatMap((s) =>
-      s.buktiTransaksi.flatMap((bt) =>
-        bt.potonganPajak.map((p) => ({
-          noBukti: bt.noBukti,
-          kodeRekening: p.kodeRekening,
-          namaRekening: p.namaRekening,
-          nilai: p.nilai,
-          sumber: `SPP ${s.jenis === "panjar" ? "Panjar" : s.jenis === "definitif" ? "Definitif" : "Pembiayaan"} ${s.nomorSPP}`,
-        })),
-      ),
+    // SPP panjar yang sudah punya SPJ — skip potongannya di level SPP
+    const panjarWithSpjIds = new Set(
+      (state.spjPanjar || []).map((spj) => spj.sppId)
     );
+
+    const fromSpp = state.spp
+      .filter((s) => !(s.jenis === "panjar" && panjarWithSpjIds.has(s.id)))
+      .flatMap((s) =>
+        s.buktiTransaksi.flatMap((bt) =>
+          bt.potonganPajak.map((p) => ({
+            noBukti: bt.noBukti,
+            kodeRekening: p.kodeRekening,
+            namaRekening: p.namaRekening,
+            nilai: p.nilai,
+            sumber: `SPP ${s.jenis === "panjar" ? "Panjar" : s.jenis === "definitif" ? "Definitif" : "Pembiayaan"} ${s.nomorSPP}`,
+          })),
+        ),
+      );
     // Potongan dari buktiKwitansi di SPJ Panjar
     const fromSpjBukti = (state.spjPanjar || []).flatMap((spj) =>
       (spj.buktiKwitansi || []).flatMap((bt) =>

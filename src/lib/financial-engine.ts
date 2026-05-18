@@ -419,21 +419,21 @@ export function generateNeraca(state: AppState): NeracaItem[] {
     }
     
     // Potongan pajak → increase hutang pajak
-    spp.buktiTransaksi.forEach(bt => {
-      bt.potonganPajak.forEach(pp => {
-        if (pp.kodeRekening === '7.1.1.01') {
-          saldoMap.set('2.1.3.01', (saldoMap.get('2.1.3.01') || 0) + pp.nilai);
-        } else if (pp.kodeRekening === '7.1.1.02') {
-          saldoMap.set('2.1.3.02', (saldoMap.get('2.1.3.02') || 0) + pp.nilai);
-        } else if (pp.kodeRekening === '7.1.1.03') {
-          saldoMap.set('2.1.3.03', (saldoMap.get('2.1.3.03') || 0) + pp.nilai);
-        } else if (pp.kodeRekening.startsWith('7.1.1')) {
-          saldoMap.set('2.1.3.01', (saldoMap.get('2.1.3.01') || 0) + pp.nilai);
-        } else if (pp.kodeRekening.startsWith('7.1.2')) {
-          saldoMap.set('2.1.3.02', (saldoMap.get('2.1.3.02') || 0) + pp.nilai);
-        }
+    // Skip SPP panjar yang sudah punya SPJ (potongan dicatat di level SPJ)
+    const isPanjarWithSpj = spp.jenis === 'panjar' &&
+      (state.spjPanjar || []).some(spj => spj.sppId === spp.id);
+
+    if (!isPanjarWithSpj) {
+      spp.buktiTransaksi.forEach(bt => {
+        bt.potonganPajak.forEach(pp => {
+          if (pp.kodeRekening.startsWith('7.1.1')) {
+            saldoMap.set('2.1.3.01', (saldoMap.get('2.1.3.01') || 0) + pp.nilai);
+          } else if (pp.kodeRekening.startsWith('7.1.2')) {
+            saldoMap.set('2.1.3.02', (saldoMap.get('2.1.3.02') || 0) + pp.nilai);
+          }
+        });
       });
-    });
+    }
   });
 
   // 2b. Potongan pajak dari SPJ Panjar (buktiKwitansi + potongan[])
@@ -630,8 +630,13 @@ export function generateBKPPajak(state: AppState): BKPPajakEntry[] {
       }
     });
   
-  // Potongan pajak dari SPP
+  // Potongan pajak dari SPP (hanya definitif & pembiayaan — panjar dicatat di level SPJ)
   state.spp.forEach(spp => {
+    // Skip SPP panjar yang sudah punya SPJ — potongannya dicatat di SPJ Panjar
+    if (spp.jenis === "panjar") {
+      const hasSpj = (state.spjPanjar || []).some(spj => spj.sppId === spp.id);
+      if (hasSpj) return;
+    }
     spp.buktiTransaksi.forEach(bt => {
       bt.potonganPajak.forEach(pp => {
         saldo += pp.nilai;
