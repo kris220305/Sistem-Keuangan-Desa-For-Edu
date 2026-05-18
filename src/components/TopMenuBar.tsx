@@ -130,104 +130,111 @@ export default function TopMenuBar() {
 
   return (
     <div ref={barRef} className="relative z-50">
-      {/* Title bar */}
-      <div className="bg-gradient-to-r from-[hsl(152,40%,14%)] to-[hsl(152,35%,20%)] text-[hsl(0,0%,92%)] text-[11px] flex items-center justify-between py-0 px-0">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-accent flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-2.5 h-2.5 text-accent-foreground">
+      {/* Single header bar matching mockup */}
+      <div className="bg-gradient-to-r from-[hsl(152,40%,12%)] to-[hsl(152,35%,18%)] border-b border-[hsl(152,30%,25%)] flex items-center px-4 h-11 shadow-md">
+        {/* Logo + App name (left) */}
+        <div className="flex items-center gap-2.5 mr-6 shrink-0 cursor-pointer" onClick={() => handleNavigate("/")}>
+          <div className="w-8 h-8 rounded-lg bg-emerald-600/90 flex items-center justify-center shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4.5 h-4.5 text-white">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
             </svg>
           </div>
-          <span className="font-medium tracking-wide text-center pl-[7px] pt-[7px] mt-0 pr-[7px] pb-[8px]">Sistem Pengelolaan Keuangan Desa — for Education</span>
+          <div className="leading-tight">
+            <span className="text-[11px] font-semibold text-white block">Sistem Pengelolaan</span>
+            <span className="text-[11px] font-semibold text-white block">Keuangan Desa</span>
+            <span className="text-[9px] text-emerald-300/80 italic">For Education</span>
+          </div>
         </div>
-        <span className="text-[10px] text-[hsl(0,0%,70%)] pr-2">v2.0</span>
-      </div>
 
-      {/* Menu bar */}
-      <div className="bg-gradient-to-b from-[hsl(0,0%,97%)] to-[hsl(0,0%,93%)] border-b border-border flex items-center px-2 h-8 shadow-sm">
-        {menuStructure.map((menu) => {
-          const active = isActivePath(menu);
-          return (
-            <div key={menu.label} className="relative">
-              <button
-                className={`px-3 py-1 text-xs font-medium rounded transition-all duration-150
-                  ${openMenu === menu.label
-                    ? "bg-primary/10 text-primary shadow-inner"
-                    : active
-                    ? "text-primary font-semibold"
-                    : "text-foreground hover:bg-primary/5 hover:text-primary"
-                  }`}
-                onClick={() => {
-                  if (menu.children) {
-                    setOpenMenu(openMenu === menu.label ? null : menu.label);
-                  } else if (menu.path) {
-                    handleNavigate(menu.path);
-                  }
-                }}
-                onMouseEnter={() => openMenu && openMenu !== menu.label && setOpenMenu(menu.label)}
-              >
-                {menu.label}
-              </button>
-              {openMenu === menu.label && menu.children && (
-                <div className="absolute left-0 top-full bg-popover border border-border shadow-xl rounded-b-md min-w-[230px] py-1 z-50 animate-dropdown-in origin-top">
-                  {menu.children.map((item) => {
-                    if (item.separator) {
-                      return <div key={item.label} className="border-t border-border my-1 mx-3" />;
+        {/* Separator */}
+        <div className="w-px h-6 bg-white/20 mr-4" />
+
+        {/* Menu items (center/right) */}
+        <div className="flex items-center gap-0.5">
+          {menuStructure.map((menu) => {
+            const active = isActivePath(menu);
+            return (
+              <div key={menu.label} className="relative">
+                <button
+                  className={`px-3 py-1.5 text-[12px] font-medium rounded-md transition-all duration-150
+                    ${openMenu === menu.label
+                      ? "bg-white/15 text-white"
+                      : active
+                      ? "text-emerald-300 font-semibold"
+                      : "text-white/80 hover:bg-white/10 hover:text-white"
+                    }`}
+                  onClick={() => {
+                    if (menu.children) {
+                      setOpenMenu(openMenu === menu.label ? null : menu.label);
+                    } else if (menu.path) {
+                      handleNavigate(menu.path);
                     }
-                    if (item.children) {
-                      return (
-                        <div
-                          key={item.label}
-                          className="relative"
-                          onMouseEnter={() => setOpenSub(item.label)}
-                          onMouseLeave={() => setOpenSub(null)}
-                        >
-                          <button
-                            className={`w-full text-left px-4 py-1.5 text-xs flex items-center justify-between rounded-sm mx-1 transition-colors duration-100
-                              ${openSub === item.label ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}
-                            style={{ width: 'calc(100% - 8px)' }}
+                  }}
+                  onMouseEnter={() => openMenu && openMenu !== menu.label && setOpenMenu(menu.label)}
+                >
+                  {menu.label}
+                </button>
+                {openMenu === menu.label && menu.children && (
+                  <div className="absolute left-0 top-full mt-1 bg-popover border border-border shadow-xl rounded-lg min-w-[230px] py-1 z-50 animate-dropdown-in origin-top">
+                    {menu.children.map((item) => {
+                      if (item.separator) {
+                        return <div key={item.label} className="border-t border-border my-1 mx-3" />;
+                      }
+                      if (item.children) {
+                        return (
+                          <div
+                            key={item.label}
+                            className="relative"
+                            onMouseEnter={() => setOpenSub(item.label)}
+                            onMouseLeave={() => setOpenSub(null)}
                           >
-                            <span>{item.label}</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 ml-3 opacity-50">
-                              <polyline points="9 18 15 12 9 6" />
-                            </svg>
-                          </button>
-                          {openSub === item.label && (
-                            <div className="absolute left-full top-0 bg-popover border border-border shadow-xl rounded-md min-w-[250px] py-1 z-50 animate-dropdown-in origin-top-left -ml-0.5">
-                              {item.children.map((sub) =>
-                                <button
-                                  key={sub.label}
-                                  className={`w-full text-left px-4 py-1.5 text-xs transition-colors duration-100 rounded-sm mx-1 hover:bg-primary/10 hover:text-primary
-                                    ${sub.path === location.pathname ? "bg-primary/10 text-primary font-medium" : ""}`}
-                                  style={{ width: 'calc(100% - 8px)' }}
-                                  onClick={() => sub.path && handleNavigate(sub.path)}
-                                >
-                                  {sub.label}
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                            <button
+                              className={`w-full text-left px-4 py-1.5 text-xs flex items-center justify-between rounded-sm mx-1 transition-colors duration-100
+                                ${openSub === item.label ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}
+                              style={{ width: 'calc(100% - 8px)' }}
+                            >
+                              <span>{item.label}</span>
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 ml-3 opacity-50">
+                                <polyline points="9 18 15 12 9 6" />
+                              </svg>
+                            </button>
+                            {openSub === item.label && (
+                              <div className="absolute left-full top-0 bg-popover border border-border shadow-xl rounded-md min-w-[250px] py-1 z-50 animate-dropdown-in origin-top-left -ml-0.5">
+                                {item.children.map((sub) =>
+                                  <button
+                                    key={sub.label}
+                                    className={`w-full text-left px-4 py-1.5 text-xs transition-colors duration-100 rounded-sm mx-1 hover:bg-primary/10 hover:text-primary
+                                      ${sub.path === location.pathname ? "bg-primary/10 text-primary font-medium" : ""}`}
+                                    style={{ width: 'calc(100% - 8px)' }}
+                                    onClick={() => sub.path && handleNavigate(sub.path)}
+                                  >
+                                    {sub.label}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return (
+                        <button
+                          key={item.label}
+                          className={`w-full text-left px-4 py-1.5 text-xs transition-colors duration-100 rounded-sm mx-1 hover:bg-primary/10 hover:text-primary
+                            ${item.path === location.pathname ? "bg-primary/10 text-primary font-medium" : ""}`}
+                          style={{ width: 'calc(100% - 8px)' }}
+                          onClick={() => item.path && handleNavigate(item.path)}
+                        >
+                          {item.label}
+                        </button>
                       );
-                    }
-                    return (
-                      <button
-                        key={item.label}
-                        className={`w-full text-left px-4 py-1.5 text-xs transition-colors duration-100 rounded-sm mx-1 hover:bg-primary/10 hover:text-primary
-                          ${item.path === location.pathname ? "bg-primary/10 text-primary font-medium" : ""}`}
-                        style={{ width: 'calc(100% - 8px)' }}
-                        onClick={() => item.path && handleNavigate(item.path)}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
