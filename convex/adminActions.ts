@@ -12,6 +12,26 @@ import { AnggaranSchema } from "./validators/AnggaranSchema";
 const DEFAULT_BATCH_SIZE = 25;
 const MAX_BATCH_SIZE = 50;
 
+const SETTINGS_KEY = "singleton";
+
+async function ensureSettingsRow(db: any) {
+  const existing = await db
+    .query("siteSettings")
+    .withIndex("by_key", (q: any) => q.eq("key", SETTINGS_KEY))
+    .unique();
+  if (existing) return existing;
+  const now = Date.now();
+  const id = await db.insert("siteSettings", {
+    key: SETTINGS_KEY,
+    isLocked: false,
+    maxUsers: 200,
+    demoSeedVersion: 0,
+    wipeAllVersion: 0,
+    updatedAt: now,
+  });
+  return await db.get(id);
+}
+
 function normalizeBatchSize(batchSize: number | undefined) {
   if (!Number.isFinite(batchSize ?? DEFAULT_BATCH_SIZE)) return DEFAULT_BATCH_SIZE;
   return Math.max(1, Math.min(MAX_BATCH_SIZE, Math.floor(batchSize ?? DEFAULT_BATCH_SIZE)));
@@ -82,20 +102,14 @@ async function detachSessionFromGroups(db: any, sessionId: string) {
 
 async function bumpWipeVersion(db: any) {
   const now = Date.now();
-  const settings = await db
-    .query("siteSettings")
-    .withIndex("by_key", (q: any) => q.eq("key", "singleton"))
-    .unique();
+  const settings = await ensureSettingsRow(db);
   if (settings) await db.patch(settings._id, { wipeAllVersion: now, updatedAt: now });
   return now;
 }
 
 async function bumpDemoVersion(db: any) {
   const now = Date.now();
-  const settings = await db
-    .query("siteSettings")
-    .withIndex("by_key", (q: any) => q.eq("key", "singleton"))
-    .unique();
+  const settings = await ensureSettingsRow(db);
   if (settings) await db.patch(settings._id, { demoSeedVersion: now, updatedAt: now });
   return now;
 }
