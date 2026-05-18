@@ -40,30 +40,43 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
-const ParameterBidangKegiatan = lazy(() => import("@/pages/ParameterBidangKegiatan"));
-const ParameterSumberDana = lazy(() => import("@/pages/ParameterSumberDana"));
-const ParameterRekening = lazy(() => import("@/pages/ParameterRekening"));
-const ParameterOutputKegiatan = lazy(() => import("@/pages/ParameterOutputKegiatan"));
-const DetailKegiatan = lazy(() => import("@/pages/DetailKegiatan"));
-const PendapatanDesa = lazy(() => import("@/pages/PendapatanDesa"));
-const BelanjaDesa = lazy(() => import("@/pages/BelanjaDesa"));
-const PembiayaanDesa = lazy(() => import("@/pages/PembiayaanDesa"));
-const PenerimaanDesa = lazy(() => import("@/pages/PenerimaanDesa"));
-const SPPPanjar = lazy(() => import("@/pages/SPPPanjar"));
-const SPPDefinitif = lazy(() => import("@/pages/SPPDefinitif"));
-const SPPPembiayaan = lazy(() => import("@/pages/SPPPembiayaan"));
-const SPJKegiatan = lazy(() => import("@/pages/SPJKegiatan"));
-const PenyetoranPajak = lazy(() => import("@/pages/PenyetoranPajak"));
-const MutasiKas = lazy(() => import("@/pages/MutasiKas"));
-const JurnalUmum = lazy(() => import("@/pages/JurnalUmum"));
-const SaldoAwal = lazy(() => import("@/pages/SaldoAwal"));
-const LaporanLRA = lazy(() => import("@/pages/LaporanLRA"));
-const LaporanNeraca = lazy(() => import("@/pages/LaporanNeraca"));
-const LaporanBKU = lazy(() => import("@/pages/LaporanBKU"));
-const LaporanBKPPajak = lazy(() => import("@/pages/LaporanBKPPajak"));
-const LaporanPenjabaran = lazy(() => import("@/pages/LaporanPenjabaran"));
-const LaporanLRAPerKegiatan = lazy(() => import("@/pages/LaporanLRAPerKegiatan"));
-const TentangAplikasi = lazy(() => import("@/pages/TentangAplikasi"));
+// Auto-reload on stale chunk (after deploy, browser may cache old HTML referencing old assets)
+function lazyWithRetry(importFn: () => Promise<any>) {
+  return lazy(() => importFn().catch(() => {
+    // Asset not found — likely stale cache after deploy. Reload once.
+    const reloaded = sessionStorage.getItem("siskeudes_chunk_reload");
+    if (!reloaded) {
+      sessionStorage.setItem("siskeudes_chunk_reload", "1");
+      window.location.reload();
+    }
+    return importFn(); // fallback attempt
+  }));
+}
+
+const ParameterBidangKegiatan = lazyWithRetry(() => import("@/pages/ParameterBidangKegiatan"));
+const ParameterSumberDana = lazyWithRetry(() => import("@/pages/ParameterSumberDana"));
+const ParameterRekening = lazyWithRetry(() => import("@/pages/ParameterRekening"));
+const ParameterOutputKegiatan = lazyWithRetry(() => import("@/pages/ParameterOutputKegiatan"));
+const DetailKegiatan = lazyWithRetry(() => import("@/pages/DetailKegiatan"));
+const PendapatanDesa = lazyWithRetry(() => import("@/pages/PendapatanDesa"));
+const BelanjaDesa = lazyWithRetry(() => import("@/pages/BelanjaDesa"));
+const PembiayaanDesa = lazyWithRetry(() => import("@/pages/PembiayaanDesa"));
+const PenerimaanDesa = lazyWithRetry(() => import("@/pages/PenerimaanDesa"));
+const SPPPanjar = lazyWithRetry(() => import("@/pages/SPPPanjar"));
+const SPPDefinitif = lazyWithRetry(() => import("@/pages/SPPDefinitif"));
+const SPPPembiayaan = lazyWithRetry(() => import("@/pages/SPPPembiayaan"));
+const SPJKegiatan = lazyWithRetry(() => import("@/pages/SPJKegiatan"));
+const PenyetoranPajak = lazyWithRetry(() => import("@/pages/PenyetoranPajak"));
+const MutasiKas = lazyWithRetry(() => import("@/pages/MutasiKas"));
+const JurnalUmum = lazyWithRetry(() => import("@/pages/JurnalUmum"));
+const SaldoAwal = lazyWithRetry(() => import("@/pages/SaldoAwal"));
+const LaporanLRA = lazyWithRetry(() => import("@/pages/LaporanLRA"));
+const LaporanNeraca = lazyWithRetry(() => import("@/pages/LaporanNeraca"));
+const LaporanBKU = lazyWithRetry(() => import("@/pages/LaporanBKU"));
+const LaporanBKPPajak = lazyWithRetry(() => import("@/pages/LaporanBKPPajak"));
+const LaporanPenjabaran = lazyWithRetry(() => import("@/pages/LaporanPenjabaran"));
+const LaporanLRAPerKegiatan = lazyWithRetry(() => import("@/pages/LaporanLRAPerKegiatan"));
+const TentangAplikasi = lazyWithRetry(() => import("@/pages/TentangAplikasi"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
