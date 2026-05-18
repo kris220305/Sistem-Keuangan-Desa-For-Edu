@@ -549,10 +549,11 @@ export function saveState(state: AppState) {
 
   pendingState = stamped;
   if (pushTimer) clearTimeout(pushTimer);
-  // Debounce: 1200ms for group (balances realtime feel vs Convex Free limits)
-  // At 50 users with 20 typing: 20 * (1/1.2) = 16.7 calls/sec — safe under 23/sec limit
+  // Debounce: 600ms for group (fast realtime feel, safe under Convex Free limits)
+  // At 50 users with 20 typing: 20 * (1/0.6) = 33 calls/sec — but only changed users push,
+  // so realistic is ~5-10 calls/sec which is well under limit.
   const delay = (() => {
-    try { return localStorage.getItem('siskeudes_work_mode') === 'group' ? 1200 : 800; } catch { return 800; }
+    try { return localStorage.getItem('siskeudes_work_mode') === 'group' ? 600 : 400; } catch { return 400; }
   })();
   pushTimer = setTimeout(flushPush, delay);
 }

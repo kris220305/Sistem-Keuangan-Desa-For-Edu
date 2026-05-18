@@ -36,7 +36,7 @@ function applyIncomingState(formData: Record<string, unknown>): boolean {
     }
 
     // Pause outgoing sync briefly to prevent echo loop
-    localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 1500));
+    localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 800));
 
     localStorage.setItem("siskeudes_state", mergedStr);
     localStorage.setItem("siskeudes_app_state", mergedStr);
@@ -95,7 +95,7 @@ export function useGroupRealtimeSync() {
     if (doc === null && prevUpdatedAt.current !== null) {
       prevUpdatedAt.current = null;
       // Clear local state — admin wiped the group data
-      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 2000));
+      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 1000));
       localStorage.removeItem("siskeudes_state");
       localStorage.removeItem("siskeudes_app_state");
       localStorage.removeItem("siskeudes_mutasi_kas");
