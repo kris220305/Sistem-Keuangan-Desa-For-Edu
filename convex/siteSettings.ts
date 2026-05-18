@@ -5,11 +5,15 @@ import { writeAuditLog } from "./_shared/audit";
 
 const SETTINGS_KEY = "singleton";
 
-async function ensureRow(db: any) {
-  const existing = await db
+async function getRow(db: any) {
+  return await db
     .query("siteSettings")
     .withIndex("by_key", (q: any) => q.eq("key", SETTINGS_KEY))
     .unique();
+}
+
+async function ensureRow(db: any) {
+  const existing = await getRow(db);
   if (existing) return existing;
   const now = Date.now();
   const id = await db.insert("siteSettings", {
@@ -26,8 +30,18 @@ async function ensureRow(db: any) {
 export const get = queryGeneric({
   args: {},
   handler: async ({ db }) => {
-    const row = await ensureRow(db);
-    if (!row) return null;
+    const row = await getRow(db);
+    if (!row) {
+      // Return safe defaults — row will be created on first mutation
+      return {
+        id: null,
+        is_locked: false,
+        max_users: 200,
+        demo_seed_version: 0,
+        wipe_all_version: 0,
+        updated_at: new Date().toISOString(),
+      };
+    }
     return {
       id: row._id,
       is_locked: row.isLocked,
