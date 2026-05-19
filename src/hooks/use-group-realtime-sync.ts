@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { loadState, mergeStates, type AppState } from "@/data/app-state";
+import { loadState, mergeStates, cancelPendingSync, type AppState } from "@/data/app-state";
 import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
 import { useGroupContext } from "@/hooks/use-group-context";
@@ -94,8 +94,9 @@ export function useGroupRealtimeSync() {
     // Handle document deletion (admin wipe): doc becomes null after being non-null
     if (doc === null && prevUpdatedAt.current !== null) {
       prevUpdatedAt.current = null;
-      // Clear local state — admin wiped the group data
-      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 1000));
+      // Cancel any pending push and pause sync to prevent stale data push-back
+      cancelPendingSync();
+      localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
       localStorage.removeItem("siskeudes_state");
       localStorage.removeItem("siskeudes_app_state");
       localStorage.removeItem("siskeudes_mutasi_kas");

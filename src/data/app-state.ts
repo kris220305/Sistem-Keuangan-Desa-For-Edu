@@ -468,7 +468,10 @@ async function flushPush() {
     const pauseUntil = (() => {
       try { return Number(localStorage.getItem('siskeudes_sync_pause_until') || '0'); } catch { return 0; }
     })();
-    if (pauseUntil && Date.now() < pauseUntil) return;
+    if (pauseUntil && Date.now() < pauseUntil) {
+      // Still paused — don't push, don't reschedule
+      return;
+    }
     const workMode = (() => {
       try { return localStorage.getItem('siskeudes_work_mode') || 'individual'; } catch { return 'individual'; }
     })();
@@ -564,4 +567,16 @@ export function flushSaveStateNow() {
     pushTimer = null;
   }
   flushPush();
+}
+
+/**
+ * Cancel any pending sync push. Called when admin wipe/demo resets local data
+ * to prevent stale data from being pushed back to server.
+ */
+export function cancelPendingSync() {
+  if (pushTimer) {
+    clearTimeout(pushTimer);
+    pushTimer = null;
+  }
+  pendingState = null;
 }
