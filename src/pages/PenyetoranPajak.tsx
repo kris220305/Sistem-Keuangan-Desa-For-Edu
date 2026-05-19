@@ -33,14 +33,16 @@ export default function PenyetoranPajak() {
 
   const pajakRekening = rekeningData.filter(r => r.kode.startsWith("7.1"));
 
-  // Kumpulkan semua potongan dari SEMUA sumber (SPP definitif/pembiayaan + SPJ Panjar buktiKwitansi + SPJ Panjar potongan[])
-  // Untuk SPP panjar yang sudah punya SPJ, potongan diambil dari SPJ (bukan dari SPP)
+  // Kumpulkan potongan pajak HANYA dari buktiTransaksi/buktiKwitansi (sumber tunggal, tanpa duplikat)
+  // - SPP definitif/pembiayaan: dari spp.buktiTransaksi[].potonganPajak[]
+  // - SPP panjar yang punya SPJ: dari spjPanjar.buktiKwitansi[].potonganPajak[]
+  // - SPP panjar tanpa SPJ: dari spp.buktiTransaksi[].potonganPajak[]
   const allBuktiPotong = useMemo(() => {
-    // SPP panjar yang sudah punya SPJ — skip potongannya di level SPP
     const panjarWithSpjIds = new Set(
       (state.spjPanjar || []).map((spj) => spj.sppId)
     );
 
+    // SPP definitif/pembiayaan + SPP panjar yang BELUM punya SPJ
     const fromSpp = state.spp
       .filter((s) => !(s.jenis === "panjar" && panjarWithSpjIds.has(s.id)))
       .flatMap((s) =>
@@ -50,11 +52,12 @@ export default function PenyetoranPajak() {
             kodeRekening: p.kodeRekening,
             namaRekening: p.namaRekening,
             nilai: p.nilai,
-            sumber: `SPP ${s.jenis === "panjar" ? "Panjar" : s.jenis === "definitif" ? "Definitif" : "Pembiayaan"} ${s.nomorSPP}`,
+            sumber: `KW ${bt.noBukti}`,
           })),
         ),
       );
-    // Potongan dari buktiKwitansi di SPJ Panjar
+
+    // SPJ Panjar: HANYA dari buktiKwitansi (bukan dari potongan[] level SPJ)
     const fromSpjBukti = (state.spjPanjar || []).flatMap((spj) =>
       (spj.buktiKwitansi || []).flatMap((bt) =>
         (bt.potonganPajak || []).map((p) => ({
@@ -62,26 +65,12 @@ export default function PenyetoranPajak() {
           kodeRekening: p.kodeRekening,
           namaRekening: p.namaRekening,
           nilai: p.nilai,
-          sumber: `SPJ Panjar KW ${spj.nomorSPJ}`,
+          sumber: `KW ${bt.noBukti}`,
         })),
       ),
     );
-    // Potongan dari array potongan[] level SPJ (backward compat)
-    const fromSpjLevel = (state.spjPanjar || []).flatMap((spj) =>
-      (spj.potongan || []).map((p) => ({
-        noBukti: spj.nomorSPJ,
-        kodeRekening: p.kodeRekening,
-        namaRekening: p.namaRekening,
-        nilai: p.nilai,
-        sumber: `SPJ Panjar ${spj.nomorSPJ}`,
-      })),
-    );
-    // Deduplicate: if same noBukti+kodeRekening+nilai exists in both fromSpjBukti and fromSpjLevel, prefer fromSpjBukti
-    const spjBuktiKeys = new Set(fromSpjBukti.map((b) => `${b.noBukti}|${b.kodeRekening}|${b.nilai}`));
-    const dedupedSpjLevel = fromSpjLevel.filter(
-      (b) => !spjBuktiKeys.has(`${b.noBukti}|${b.kodeRekening}|${b.nilai}`)
-    );
-    return [...fromSpp, ...fromSpjBukti, ...dedupedSpjLevel].filter((x) => Number(x.nilai || 0) > 0);
+
+    return [...fromSpp, ...fromSpjBukti].filter((x) => Number(x.nilai || 0) > 0);
   }, [state.spp, state.spjPanjar]);
 
   const [form, setForm] = useState({
@@ -153,6 +142,11 @@ export default function PenyetoranPajak() {
       if (!existing.has(k)) merged.push(it);
     }
     if (!form.kodeRekening) setForm((p) => ({ ...p, kodeRekening: kodeTarget }));
+    // Auto-set keterangan sesuai jenis pajak yang diimpor
+    if (!form.keterangan && ok.length > 0) {
+      const namaPajak = ok[0].namaRekening || "Pajak";
+      setForm((p) => ({ ...p, keterangan: `Penyetoran ${namaPajak}` }));
+    }
     setSelectedBuktiPotong(merged);
     setAutoPick({});
     if (skipped > 0) toast.info(`Sebagian transaksi beda kode pajak (${skipped}) dilewati. Buat penyetoran terpisah.`);
