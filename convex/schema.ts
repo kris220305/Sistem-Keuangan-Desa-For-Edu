@@ -33,6 +33,18 @@ export default defineSchema({
     lastSessionId: v.string(),
   }).index("by_groupId", ["groupId"]),
 
+  // Chunked group state — stores state per category per group.
+  groupStateChunks: defineTable({
+    groupId: v.id("groups"),
+    category: v.string(),
+    data: v.any(),
+    meta: v.optional(v.any()),
+    updatedAt: v.number(),
+    lastSessionId: v.string(),
+  })
+    .index("by_groupId_category", ["groupId", "category"])
+    .index("by_groupId", ["groupId"]),
+
   adminSessions: defineTable({
     tokenHash: v.string(),
     createdAt: v.number(),
