@@ -142,16 +142,66 @@ export default function PenyetoranPajak() {
       if (!existing.has(k)) merged.push(it);
     }
     if (!form.kodeRekening) setForm((p) => ({ ...p, kodeRekening: kodeTarget }));
-    // Auto-set keterangan sesuai jenis pajak yang diimpor
     if (!form.keterangan && ok.length > 0) {
       const namaPajak = ok[0].namaRekening || "Pajak";
       setForm((p) => ({ ...p, keterangan: `Penyetoran ${namaPajak}` }));
     }
     setSelectedBuktiPotong(merged);
     setAutoPick({});
-    if (skipped > 0) toast.info(`Sebagian transaksi beda kode pajak (${skipped}) dilewati. Buat penyetoran terpisah.`);
+    if (skipped > 0) toast.info(`${skipped} transaksi beda jenis pajak dilewati. Gunakan "Buat Semua Otomatis" untuk membuat penyetoran per jenis.`);
     toast.success(`Impor ${ok.length} rincian bukti potong.`);
     setActiveTab("rincianBuktiPotong");
+  };
+
+  // Buat penyetoran otomatis untuk SEMUA jenis pajak sekaligus (1 penyetoran per kodeRekening)
+  const handleBuatSemuaOtomatis = () => {
+    if (availableBuktiPotong.length === 0) {
+      toast.info("Tidak ada transaksi pajak yang belum disetor.");
+      return;
+    }
+
+    // Group by kodeRekening
+    const grouped = new Map<string, typeof availableBuktiPotong>();
+    for (const item of availableBuktiPotong) {
+      const arr = grouped.get(item.kodeRekening) || [];
+      arr.push(item);
+      grouped.set(item.kodeRekening, arr);
+    }
+
+    const newPenyetoran: PenyetoranPajakItem[] = [];
+    let count = state.penyetoranPajak.length;
+
+    for (const [kodeRek, items] of grouped) {
+      count++;
+      const totalJumlah = items.reduce((s, i) => s + i.nilai, 0);
+      const namaRek = items[0].namaRekening || "Pajak";
+      const rek = pajakRekening.find(r => r.kode === kodeRek);
+
+      newPenyetoran.push({
+        id: crypto.randomUUID(),
+        tanggal: new Date().toISOString().split("T")[0],
+        noBukti: `${String(count).padStart(4, "0")}/SSP/05.2001/2024`,
+        kodeRekening: kodeRek,
+        kodeMAP: rek ? (kodeRek.includes("7.1.1") ? "411211" : "411124") : "",
+        keterangan: `Penyetoran ${namaRek}`,
+        jumlah: totalJumlah,
+        ntpn: "",
+        jenis: "bank",
+        rincianBuktiPotong: items.map(i => ({
+          noBukti: i.noBukti,
+          kodeRekening: i.kodeRekening,
+          namaRekening: i.namaRekening,
+          nilai: i.nilai,
+        })),
+      });
+    }
+
+    const newState = { ...state, penyetoranPajak: [...state.penyetoranPajak, ...newPenyetoran] };
+    saveState(newState);
+    setState(newState);
+    setMode("view");
+    trackFormProgress("pajak");
+    toast.success(`${newPenyetoran.length} penyetoran pajak dibuat otomatis (${grouped.size} jenis pajak).`);
   };
 
   const handleTambah = () => {
@@ -424,14 +474,22 @@ export default function PenyetoranPajak() {
                       <div className="text-[11px] font-semibold">
                         Otomatis dari transaksi pajak ({availableBuktiPotong.length})
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 flex-wrap">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700"
+                          onClick={handleBuatSemuaOtomatis}
+                        >
+                          Buat Semua Otomatis
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-7 text-[10px]"
                           onClick={() => importFromTransactions(availableBuktiPotong)}
                         >
-                          Impor Semua
+                          Impor ke Form Ini
                         </Button>
                         <Button
                           variant="outline"
@@ -439,6 +497,7 @@ export default function PenyetoranPajak() {
                           className="h-7 text-[10px]"
                           onClick={() => {
                             const picked = availableBuktiPotong.filter((b) => autoPick[buktiKey(b)]);
+                            if (picked.length === 0) { toast.error("Pilih minimal 1 transaksi"); return; }
                             importFromTransactions(picked);
                           }}
                         >
