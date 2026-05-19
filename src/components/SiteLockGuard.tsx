@@ -174,12 +174,17 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
           (typeof serverFormData === "object" && Object.keys(serverFormData as object).length === 0);
         const localHasData = !!localState && localState !== "{}" && localState.length > 4;
 
-        if (serverEmpty && localHasData) {
+        // Only trigger "reset by admin" if user is in INDIVIDUAL mode.
+        // In group mode, form_data in userSessions is often empty because
+        // data lives in groupStates instead. This prevents false "reset" triggers.
+        const workMode = localStorage.getItem("siskeudes_work_mode") || "individual";
+        if (serverEmpty && localHasData && workMode === "individual") {
           toast.info("Progress Anda telah direset oleh admin.");
+          cancelPendingSync();
+          localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 5000));
           localStorage.removeItem("siskeudes_app_state");
           localStorage.removeItem("siskeudes_state");
           localStorage.removeItem("siskeudes_mutasi_kas");
-          // Dispatch state-updated so all forms rerender with empty state
           window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
         }
       } catch (e) { console.warn('[SiteLockGuard] kick check failed:', e); }

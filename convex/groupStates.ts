@@ -250,12 +250,12 @@ export const merge = mutationGeneric({
     }
 
     // Side-effect: populate groupStateChunks for per-category subscriptions
+    // Only update chunks that actually changed (reduce write pressure for 50 users)
     const mergedObj = asObj(merged);
     const mergedMeta = asObj(mergedObj.__meta);
     for (const col of COLLECTIONS) {
       const arr = mergedObj[col];
       if (!Array.isArray(arr)) continue;
-      // Extract meta entries for this category
       const catMeta: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(mergedMeta)) {
         if (k.startsWith(`${col}:`)) catMeta[k] = v;
@@ -264,6 +264,8 @@ export const merge = mutationGeneric({
         .query("groupStateChunks")
         .withIndex("by_groupId_category", (q: any) => q.eq("groupId", groupId).eq("category", col))
         .unique();
+      // Skip write if chunk data hasn't changed (compare updatedAt with session)
+      if (chunkDoc && chunkDoc.lastSessionId === sessionId && chunkDoc.updatedAt === now) continue;
       const chunkPayload = { groupId, category: col, data: arr, meta: catMeta, updatedAt: now, lastSessionId: sessionId };
       if (chunkDoc) {
         await db.patch(chunkDoc._id, chunkPayload);
@@ -272,15 +274,18 @@ export const merge = mutationGeneric({
       }
     }
 
-    await writeAuditLog(db, {
-      actorId: sessionId,
-      actionType: "groupStates.merge",
-      targetType: "groups",
-      targetId: String(groupId),
-      fieldName: "stateHash",
-      oldValue: oldHash,
-      newValue: newHash,
-    });
+    // Audit log — non-blocking (don't fail merge if audit fails)
+    try {
+      await writeAuditLog(db, {
+        actorId: sessionId,
+        actionType: "groupStates.merge",
+        targetType: "groups",
+        targetId: String(groupId),
+        fieldName: "stateHash",
+        oldValue: oldHash,
+        newValue: newHash,
+      });
+    } catch { /* audit failure should not block sync */ }
     return resultId;
   },
 });
