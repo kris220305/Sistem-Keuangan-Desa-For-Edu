@@ -552,11 +552,18 @@ export function saveState(state: AppState) {
 
   pendingState = stamped;
   if (pushTimer) clearTimeout(pushTimer);
-  // Debounce: 600ms for group (fast realtime feel, safe under Convex Free limits)
-  // At 50 users with 20 typing: 20 * (1/0.6) = 33 calls/sec — but only changed users push,
-  // so realistic is ~5-10 calls/sec which is well under limit.
+  // Adaptive debounce: lebih banyak user aktif = lebih lambat push
+  // Base: 800ms group, 400ms individual
+  // Jika ada banyak entity berubah (bulk edit), tambah delay
   const delay = (() => {
-    try { return localStorage.getItem('siskeudes_work_mode') === 'group' ? 600 : 400; } catch { return 400; }
+    try {
+      const workMode = localStorage.getItem('siskeudes_work_mode') || 'individual';
+      if (workMode !== 'group') return 400;
+      // Adaptive: check how many entities changed in this save
+      const changedCount = Object.keys(stamped.__meta || {}).length;
+      // Base 800ms, +200ms per 50 entities (max 2000ms)
+      return Math.min(2000, 800 + Math.floor(changedCount / 50) * 200);
+    } catch { return 800; }
   })();
   pushTimer = setTimeout(flushPush, delay);
 }

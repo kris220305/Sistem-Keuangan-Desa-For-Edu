@@ -274,17 +274,19 @@ export const merge = mutationGeneric({
       }
     }
 
-    // Audit log — non-blocking (don't fail merge if audit fails)
+    // Audit log — non-blocking, sampled (1 in 5 writes to reduce pressure)
     try {
-      await writeAuditLog(db, {
-        actorId: sessionId,
-        actionType: "groupStates.merge",
-        targetType: "groups",
-        targetId: String(groupId),
-        fieldName: "stateHash",
-        oldValue: oldHash,
-        newValue: newHash,
-      });
+      if (Math.random() < 0.2) {
+        await writeAuditLog(db, {
+          actorId: sessionId,
+          actionType: "groupStates.merge",
+          targetType: "groups",
+          targetId: String(groupId),
+          fieldName: "stateHash",
+          oldValue: oldHash,
+          newValue: newHash,
+        });
+      }
     } catch { /* audit failure should not block sync */ }
     return resultId;
   },

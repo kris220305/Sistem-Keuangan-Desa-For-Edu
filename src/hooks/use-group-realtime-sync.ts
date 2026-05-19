@@ -45,6 +45,10 @@ function applyIncomingState(formData: Record<string, unknown>): boolean {
       localStorage.setItem("siskeudes_mutasi_kas", JSON.stringify(mutasiKas));
     }
     window.dispatchEvent(new CustomEvent("siskeudes:state-updated"));
+
+    // Notify user that data was updated by teammate (deduplicated via id)
+    toast.info("Data diperbarui oleh anggota kelompok", { duration: 2000, id: "realtime-sync" });
+
     return true;
   } catch {
     return false;
