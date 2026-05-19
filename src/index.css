@@ -123,3 +123,70 @@
     backdrop-filter: blur(12px);
   }
 }
+
+/* ===== Penatausahaan Table Styles ===== */
+@layer components {
+  /* Table container — ensures horizontal scroll on small screens */
+  .form-table-wrap {
+    @apply overflow-x-auto overflow-y-auto;
+  }
+
+  /* Table header row */
+  .form-table-wrap th {
+    @apply text-xs font-semibold text-muted-foreground bg-muted/50 px-3 py-2.5 whitespace-nowrap;
+  }
+
+  /* Table body cells — readable size, proper padding */
+  .form-table-wrap td {
+    @apply text-xs px-3 py-2 align-middle;
+  }
+
+  /* Selected row */
+  .form-table-wrap tr.row-selected {
+    @apply bg-primary/10;
+  }
+
+  /* Hover row */
+  .form-table-wrap tr.row-hover:hover {
+    @apply bg-muted/40 cursor-pointer;
+  }
+
+  /* Number columns — right aligned, tabular */
+  .form-table-wrap .col-number {
+    @apply text-right font-medium tabular-nums;
+  }
+
+  /* Code columns — monospace */
+  .form-table-wrap .col-code {
+    @apply font-mono text-xs;
+  }
+
+  /* Description columns — allow wrap instead of truncate */
+  .form-table-wrap .col-desc {
+    @apply min-w-[180px] max-w-[320px];
+    word-break: break-word;
+  }
+
+  /* Form input area below table */
+  .form-input-area {
+    @apply p-4 space-y-3 bg-card/60 backdrop-blur-sm border-t border-border;
+  }
+
+  .form-input-area label {
+    @apply text-xs font-medium text-muted-foreground w-24 shrink-0;
+  }
+
+  .form-input-area input,
+  .form-input-area select {
+    @apply h-8 text-xs;
+  }
+
+  /* Action bar at bottom */
+  .form-action-bar {
+    @apply px-4 py-2 border-t border-border bg-muted/20 flex items-center gap-1.5 flex-wrap;
+  }
+
+  .form-action-bar button {
+    @apply h-7 text-[11px];
+  }
+}
