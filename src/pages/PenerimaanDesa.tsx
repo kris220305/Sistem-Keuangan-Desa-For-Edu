@@ -1542,45 +1542,43 @@ export default function PenerimaanDesa() {
       <div className="flex-1 p-3 overflow-hidden">
         <div className="h-full flex flex-col overflow-hidden rounded-2xl border border-[hsl(152,25%,70%)] bg-[hsl(152,35%,16%)]">
           <div className="bg-[hsl(152,55%,22%)] border-b border-[hsl(152,25%,30%)]">
-            <div className="py-2 text-center font-extrabold tracking-widest text-white">
-              {namaDesa.toUpperCase()}
+            <div className="py-2 text-center font-extrabold tracking-widest text-white text-sm">
+              Penerimaan dan Penyetoran — Desa {namaDesa.toUpperCase()}
             </div>
           </div>
 
           <div className="flex-1 flex min-h-0 overflow-hidden bg-[hsl(152,25%,98%)]">
-            <div className="w-60 border-r border-[hsl(152,25%,78%)] bg-[hsl(152,30%,96%)]">
-              <div className="p-3">
-                <div className="text-[11px] font-semibold text-[hsl(152,55%,22%)] mb-2">MENU</div>
-                <div className="space-y-1">
-                  {([
-                    { id: "silpa", label: "SILPA Tahun Lalu", Icon: Layers },
-                    { id: "tunai", label: "Penerimaan Tunai", Icon: Banknote },
-                    { id: "bank", label: "Penerimaan Bank", Icon: Landmark },
-                  ] as Array<{ id: ActiveTab; label: string; Icon: any }>).map((m) => {
-                    const active = activeTab === m.id;
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setActiveTab(m.id)}
-                        className={cx(
-                          "w-full flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-                          active ? "bg-white border border-[hsl(152,25%,78%)]" : "hover:bg-white/70",
-                        )}
-                      >
-                        <span className={cx("h-8 w-8 rounded-lg flex items-center justify-center border", active ? "border-[hsl(152,55%,30%)] bg-[hsl(152,55%,92%)] text-[hsl(152,55%,22%)]" : "border-[hsl(152,25%,78%)] bg-white text-muted-foreground")}>
-                          <m.Icon className="h-4 w-4" />
-                        </span>
-                        <span className={cx("truncate", active ? "font-semibold text-[#111827]" : "text-[#1f2937]")}>{m.label}</span>
-                        {active && <span className="ml-auto h-6 w-1.5 rounded-full bg-[hsl(152,55%,30%)]" />}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Sidebar menu — narrower */}
+            <div className="w-48 shrink-0 border-r border-[hsl(152,25%,78%)] bg-[hsl(152,30%,96%)] overflow-y-auto">
+              <div className="p-2.5 space-y-1">
+                {([
+                  { id: "silpa", label: "SILPA Tahun Lalu", Icon: Layers },
+                  { id: "tunai", label: "Penerimaan Tunai", Icon: Banknote },
+                  { id: "bank", label: "Penerimaan Bank", Icon: Landmark },
+                ] as Array<{ id: ActiveTab; label: string; Icon: any }>).map((m) => {
+                  const active = activeTab === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setActiveTab(m.id)}
+                      className={cx(
+                        "w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs transition-colors",
+                        active ? "bg-white border border-[hsl(152,25%,78%)] shadow-sm font-semibold text-[#111827]" : "hover:bg-white/70 text-[#374151]",
+                      )}
+                    >
+                      <span className={cx("h-7 w-7 rounded-md flex items-center justify-center", active ? "bg-[hsl(152,55%,92%)] text-[hsl(152,55%,22%)]" : "bg-white text-muted-foreground")}>
+                        <m.Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="truncate">{m.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-hidden p-3">
+            {/* Content area — takes remaining space */}
+            <div className="flex-1 min-h-0 min-w-0 overflow-auto p-3">
               {activeTab === "silpa" && <SilpaTab />}
               {activeTab === "tunai" && <PenerimaanTab jenis="tunai" />}
               {activeTab === "bank" && <PenerimaanTab jenis="bank" />}

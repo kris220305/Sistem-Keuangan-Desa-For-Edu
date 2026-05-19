@@ -197,17 +197,22 @@
   .h-full > .flex-1 {
     min-height: 0;
   }
+}
 
-  /* Make tables scrollable without pushing content off-screen */
-  .overflow-auto table {
-    table-layout: auto;
+/* ===== Penerimaan Desa specific fixes ===== */
+@layer components {
+  /* Make the 2-column layout work better */
+  .penerimaan-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    height: 100%;
+    min-height: 0;
   }
 
-  /* Prevent form input sections from being hidden behind tables */
-  .border-b + .p-4,
-  .border-b + .bg-muted\/10 {
-    flex-shrink: 0;
-    overflow-y: auto;
-    max-height: 45vh;
+  @media (max-width: 1024px) {
+    .penerimaan-grid {
+      grid-template-columns: 1fr;
+    }
   }
 }
