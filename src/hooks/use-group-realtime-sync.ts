@@ -35,8 +35,9 @@ function applyIncomingState(formData: Record<string, unknown>): boolean {
       return false;
     }
 
-    // Pause outgoing sync briefly to prevent echo loop
-    localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 800));
+    // Brief pause to prevent immediate echo (push back what we just received)
+    // Keep short (400ms) so user's own next save isn't blocked long
+    localStorage.setItem("siskeudes_sync_pause_until", String(Date.now() + 400));
 
     localStorage.setItem("siskeudes_state", mergedStr);
     localStorage.setItem("siskeudes_app_state", mergedStr);
