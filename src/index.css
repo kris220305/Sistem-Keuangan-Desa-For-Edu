@@ -190,3 +190,24 @@
     @apply h-7 text-[11px];
   }
 }
+
+/* ===== Fix overflow issues in penatausahaan forms ===== */
+@layer utilities {
+  /* Ensure form pages don't overflow their container */
+  .h-full > .flex-1 {
+    min-height: 0;
+  }
+
+  /* Make tables scrollable without pushing content off-screen */
+  .overflow-auto table {
+    table-layout: auto;
+  }
+
+  /* Prevent form input sections from being hidden behind tables */
+  .border-b + .p-4,
+  .border-b + .bg-muted\/10 {
+    flex-shrink: 0;
+    overflow-y: auto;
+    max-height: 45vh;
+  }
+}
