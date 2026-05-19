@@ -650,36 +650,40 @@ export function generateBKPPajak(state: AppState): BKPPajakEntry[] {
     });
   });
 
-  // Potongan pajak dari SPJ Panjar (buktiKwitansi)
+  // Potongan pajak dari SPJ Panjar
+  // Sumber: buktiKwitansi (prioritas) ATAU potongan[] (fallback jika buktiKwitansi kosong)
   (state.spjPanjar || []).forEach(spj => {
-    (spj.buktiKwitansi || []).forEach(bt => {
-      (bt.potonganPajak || []).forEach(pp => {
+    const hasBuktiPotongan = (spj.buktiKwitansi || []).some(
+      bt => (bt.potonganPajak || []).some(p => p.nilai > 0)
+    );
+
+    if (hasBuktiPotongan) {
+      // Gunakan buktiKwitansi sebagai sumber (lebih detail)
+      (spj.buktiKwitansi || []).forEach(bt => {
+        (bt.potonganPajak || []).forEach(pp => {
+          if (!pp.nilai) return;
+          saldo += pp.nilai;
+          entries.push({
+            no: no++, tanggal: bt.tanggal || spj.tanggalSPJ, noBukti: bt.noBukti,
+            uraian: `${bt.keterangan || "Potongan Pajak"}\n${pp.namaRekening}`,
+            jenisPajak: pp.namaRekening,
+            pemotongan: pp.nilai, penyetoran: 0, saldo,
+          });
+        });
+      });
+    } else {
+      // Fallback: gunakan potongan[] level SPJ
+      (spj.potongan || []).forEach(pp => {
         if (!pp.nilai) return;
         saldo += pp.nilai;
         entries.push({
-          no: no++, tanggal: bt.tanggal || spj.tanggalSPJ, noBukti: bt.noBukti,
-          uraian: bt.keterangan || `SPJ Panjar ${spj.nomorSPJ}`,
+          no: no++, tanggal: spj.tanggalSPJ, noBukti: spj.nomorSPJ,
+          uraian: `Potongan Pajak SPJ ${spj.nomorSPJ}\n${pp.namaRekening}`,
           jenisPajak: pp.namaRekening,
           pemotongan: pp.nilai, penyetoran: 0, saldo,
         });
       });
-    });
-    // Also include potongan[] level SPJ (if not already from buktiKwitansi)
-    const bkNoBuktis = new Set((spj.buktiKwitansi || []).flatMap(bt =>
-      (bt.potonganPajak || []).map(p => `${bt.noBukti}|${p.kodeRekening}|${p.nilai}`)
-    ));
-    (spj.potongan || []).forEach(pp => {
-      if (!pp.nilai) return;
-      const key = `${spj.nomorSPJ}|${pp.kodeRekening}|${pp.nilai}`;
-      if (bkNoBuktis.has(key)) return; // avoid double-count
-      saldo += pp.nilai;
-      entries.push({
-        no: no++, tanggal: spj.tanggalSPJ, noBukti: spj.nomorSPJ,
-        uraian: `Potongan Pajak SPJ Panjar ${spj.nomorSPJ}`,
-        jenisPajak: pp.namaRekening,
-        pemotongan: pp.nilai, penyetoran: 0, saldo,
-      });
-    });
+    }
   });
   
   // Penyetoran pajak
