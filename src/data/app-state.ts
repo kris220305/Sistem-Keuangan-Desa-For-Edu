@@ -464,7 +464,8 @@ async function flushPush() {
   pendingState = null;
   if (!state) return;
   try {
-    if (localStorage.getItem('siskeudes_admin_impersonate')) return;
+    // Admin impersonation: ALLOW sync so admin edits are saved to user's group
+    // (previously this was blocked, preventing admin corrections)
     const pauseUntil = (() => {
       try { return Number(localStorage.getItem('siskeudes_sync_pause_until') || '0'); } catch { return 0; }
     })();

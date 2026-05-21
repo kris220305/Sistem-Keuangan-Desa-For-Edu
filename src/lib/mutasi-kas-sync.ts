@@ -8,7 +8,7 @@ import { formatBytes, isWithinConvexDocumentSafeLimit } from "@/lib/payload-size
 
 export function syncMutasiKasToSession(mutasiKas: MutasiKasItem[]) {
   try {
-    if (localStorage.getItem("siskeudes_admin_impersonate")) return;
+    // Allow admin impersonation to sync (so admin corrections are saved)
     const payload = {
       ...loadState(),
       mutasiKas,

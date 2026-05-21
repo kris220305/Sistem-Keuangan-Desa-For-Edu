@@ -119,9 +119,7 @@ export async function startImpersonation(session: {
         actionType: "start",
         payload: info,
       } as any);
-    } catch (err) {
-      console.error('[impersonation] recordEvent start failed:', err instanceof Error ? err.message : err);
-    }
+    } catch {}
   }
 }
 
@@ -137,9 +135,7 @@ export async function stopImpersonation() {
         restored = true;
       }
       await convex.mutation(anyApi.impersonation.clearBackup, { adminToken } as any);
-    } catch (err) {
-      console.error('[impersonation] getBackup/clearBackup failed:', err instanceof Error ? err.message : err);
-    }
+    } catch {}
   }
 
   const backup = localStorage.getItem(BACKUP_KEY);
@@ -168,9 +164,7 @@ export async function stopImpersonation() {
         actionType: "stop",
         payload: { stopped_at: Date.now() },
       } as any);
-    } catch (err) {
-      console.error('[impersonation] recordEvent stop failed:', err instanceof Error ? err.message : err);
-    }
+    } catch {}
   }
 }
 
@@ -181,7 +175,8 @@ export function getImpersonation(): ImpersonationInfo | null {
 }
 
 /**
- * Refresh the impersonated user's data from Convex. Used by the live banner.
+ * Refresh the impersonated user's data. Used by the live banner.
+ * Reads from groupStates if user is in group mode, otherwise from userSessions.
  */
 export async function refreshImpersonatedData(): Promise<{ ok: boolean; changed: boolean }> {
   const info = getImpersonation();
@@ -189,13 +184,33 @@ export async function refreshImpersonatedData(): Promise<{ ok: boolean; changed:
 
   if (!isConvexEnabled || !convex) return { ok: false, changed: false };
 
+  // First get session to check work mode and group
   const data = await convex.query(anyApi.sessions.getBySessionId, { sessionId: info.session_id } as any);
   if (!data) return { ok: false, changed: false };
 
-  const nextVillageId = (data as any).village_id || info.village_id;
-  const nextVillageName = (data as any).village_name || info.village_name;
-  const nextUserName = (data as any).user_name || info.user_name;
-  const nextFormData = ((data as any).form_data as Record<string, unknown>) ?? null;
+  const workMode = (data as any).work_mode || (data as any).workMode || "individual";
+  const groupId = (data as any).group_id || (data as any).groupId || null;
+
+  let nextFormData: Record<string, unknown> | null = null;
+
+  if (workMode === "group" && groupId) {
+    // Read from groupStates for group mode users
+    try {
+      const groupDoc = await convex.query(anyApi.groupStates.get, { groupId } as any);
+      if (groupDoc && (groupDoc as any).state) {
+        nextFormData = (groupDoc as any).state as Record<string, unknown>;
+      }
+    } catch {}
+  }
+
+  // Fallback to session form_data
+  if (!nextFormData) {
+    nextFormData = ((data as any).form_data as Record<string, unknown>) ?? null;
+  }
+
+  const nextVillageId = (data as any).village_id || (data as any).villageId || info.village_id;
+  const nextVillageName = (data as any).village_name || (data as any).villageName || info.village_name;
+  const nextUserName = (data as any).user_name || (data as any).userName || info.user_name;
 
   const currentState = localStorage.getItem("siskeudes_state") || "{}";
   const currentMutasi = localStorage.getItem("siskeudes_mutasi_kas") || "[]";
@@ -214,5 +229,12 @@ export async function refreshImpersonatedData(): Promise<{ ok: boolean; changed:
     info.user_name !== nextUserName;
 
   applyUserData(nextFormData, nextVillageId, nextVillageName, nextUserName);
+
+  // Update impersonation info with latest group/work mode
+  if (workMode === "group" && groupId) {
+    localStorage.setItem("siskeudes_work_mode", "group");
+    localStorage.setItem("siskeudes_group_id", groupId);
+  }
+
   return { ok: true, changed };
 }
